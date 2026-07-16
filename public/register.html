@@ -1,0 +1,182 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>注册 - RyuWebAuth</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; background: #f4f5f6; margin: 0; padding: 40px 16px; color: #1f2937; }
+    .card { max-width: 480px; margin: 0 auto; background: #fff; padding: 28px 30px 34px; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+    h1 { font-size: 22px; margin: 0 0 4px; }
+    .sub { color: #6b7280; font-size: 13px; margin-bottom: 20px; }
+    .steps { display: flex; margin-bottom: 22px; }
+    .steps .s { flex: 1; text-align: center; position: relative; font-size: 12px; color: #9ca3af; }
+    .steps .s::before { content: ""; position: absolute; top: 11px; left: -50%; width: 100%; height: 2px; background: #e5e7eb; z-index: 0; }
+    .steps .s:first-child::before { display: none; }
+    .steps .s .dot { position: relative; z-index: 1; width: 24px; height: 24px; line-height: 24px; border-radius: 50%; background: #e5e7eb; color: #6b7280; margin: 0 auto 6px; font-weight: 600; }
+    .steps .s.active .dot { background: #374151; color: #fff; }
+    .steps .s.active { color: #374151; font-weight: 600; }
+    .steps .s.done .dot { background: #16a34a; color: #fff; }
+    .step { display: none; }
+    .step.active { display: block; }
+    label { display: block; margin: 14px 0 6px; font-size: 14px; color: #374151; }
+    input[type="text"], input[type="password"], input[type="email"], input[type="number"] {
+      width: 100%; padding: 11px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 15px; outline: none;
+    }
+    input:focus { border-color: #111827; box-shadow: 0 0 0 3px rgba(17,24,39,0.12); }
+    button { margin-top: 18px; padding: 11px 20px; font-size: 15px; border: none; border-radius: 8px; background: #374151; color: #fff; cursor: pointer; width: 100%; }
+    button:hover { background: #1f2937; }
+    button.secondary { background: #f3f4f6; color: #1f2937; }
+    button.secondary:hover { background: #e5e7eb; }
+    button.ghost { background: transparent; color: #6b7280; border: 1px dashed #cbd5e1; }
+    button.ghost:hover { background: #f9fafb; }
+    button:disabled { opacity: .55; cursor: not-allowed; }
+    .msg { margin-top: 14px; padding: 11px 13px; border-radius: 8px; font-size: 13px; display: none; white-space: pre-wrap; line-height: 1.5; }
+    .ok { background: #ecfdf5; color: #065f46; border: 1px solid #6ee7b7; }
+    .err { background: #fef2f2; color: #991b1b; border: 1px solid #fca5a5; }
+    .hint { font-size: 12px; color: #6b7280; margin-top: 6px; line-height: 1.5; }
+    .checks { list-style: none; padding: 0; margin: 8px 0 0; font-size: 13px; }
+    .checks li { margin: 3px 0; color: #b91c1c; }
+    .checks li.pass { color: #047857; }
+    .checks li.pass::before { content: ""; }
+    .checks li::before { content: ""; }
+    .pw-wrap { position: relative; }
+    .pw-eye { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 16px; width: auto; margin: 0; padding: 4px; color: #6b7280; display: inline-flex; align-items: center; line-height: 0; }
+    .checks li.sug { color: #b45309; }
+    .checks li.sug.pass { color: #047857; }
+    .pw-hint-title { font-size: 12px; color: #b45309; margin-top: 8px; }
+    select { width: 100%; padding: 11px 36px 11px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 15px; outline: none; background-color: #fff;
+      -webkit-appearance: none; -moz-appearance: none; appearance: none;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4l4 4 4-4' fill='none' stroke='%236b7280' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+      background-repeat: no-repeat; background-position: right 12px center; background-size: 12px; }
+    select:focus { border-color: #111827; box-shadow: 0 0 0 3px rgba(17,24,39,0.12); }
+    .custom-select { position: relative; width: 100%; margin-top: 0; }
+    .select-trigger { width: 100%; padding: 11px 36px 11px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 15px; background: #fff; cursor: pointer; color: #6b7280; user-select: none; position: relative; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .select-trigger::after { content: ""; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 5px solid #6b7280; pointer-events: none; }
+    .select-trigger.open { border-color: #111827; box-shadow: 0 0 0 3px rgba(17,24,39,0.12); border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+    .select-trigger.has-value { color: #1f2937; }
+    .select-options { display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #111827; border-top: none; border-radius: 0 0 8px 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 100; max-height: 200px; overflow-y: auto; }
+    .select-options.show { display: block; }
+    .select-option { padding: 10px 12px; font-size: 14px; cursor: pointer; color: #374151; white-space: nowrap; }
+    .select-option:first-child { color: #9ca3af; }
+    .select-option:hover { background: #f3f4f6; }
+    .select-option.selected { background: #f3f4f6; font-weight: 600; }
+    .recovery { background: #f8fafc; padding: 10px; border-radius: 8px; font-family: monospace; white-space: pre-wrap; font-size: 13px; border: 1px dashed #cbd5e1; }
+    .badge { display: inline-block; background: #f1f5f9; color: #475569; font-size: 12px; padding: 2px 9px; border-radius: 12px; margin-left: 6px; }
+    .row { display: flex; gap: 10px; align-items: center; margin-top: 12px; }
+    .qr { margin: 12px 0; }
+    .mask { letter-spacing: 1px; }
+    code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+    .verify-ok { color: #047857; font-weight: 600; }
+    .optional { color: #9ca3af; font-weight: 400; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>创建你的 RyuWebAuth 账户</h1>
+    <div class="sub">注册流程：填写信息 → 邮箱验证（可选）→ 两步验证 → 完成（所有校验均由服务端裁决）</div>
+
+    <div class="steps">
+      <div class="s active" data-step="1"><div class="dot">1</div>填写信息</div>
+      <div class="s" data-step="2"><div class="dot">2</div>邮箱验证</div>
+      <div class="s" data-step="3"><div class="dot">3</div>两步验证</div>
+      <div class="s" data-step="4"><div class="dot">4</div>完成</div>
+    </div>
+
+    <!-- 开始 -->
+    <section id="step-start" class="step active">
+      <p class="hint">欢迎！先填写账户信息（用户名/密码/年龄/邮箱均经服务端校验），随后可选择性验证邮箱，并设置两步验证。</p>
+      <button id="btn-start">开始注册</button>
+    </section>
+
+    <!-- ① 填写信息 -->
+    <section id="step-1" class="step">
+      <form id="form-info" autocomplete="on">
+        <label for="username">用户名（支持多语言，不含 emoji / 颜文字）</label>
+        <input type="text" id="username" placeholder="例如 alice_中文" required />
+        <label for="password">密码</label>
+        <div class="pw-wrap">
+          <input type="password" id="password" placeholder="至少 8 位" required />
+          <button type="button" id="pw-toggle" class="pw-eye" aria-label="显示/隐藏密码" title="显示/隐藏密码"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+        </div>
+        <div class="pw-hint-title">密码安全建议（非必须，满足可增强安全性）：</div>
+        <ul id="pw-checks" class="checks">
+          <li data-k="len">长度至少 8 位（必须）</li>
+          <li data-k="emoji">不含 emoji / 颜文字（必须）</li>
+          <li class="sug" data-k="lower">包含小写字母（建议）</li>
+          <li class="sug" data-k="upper">包含大写字母（建议）</li>
+          <li class="sug" data-k="symbol">包含符号（建议）</li>
+        </ul>
+        <label for="age">年龄</label>
+        <input type="number" id="age" placeholder="13 - 120" min="13" max="120" required />
+        <label for="email">邮箱</label>
+        <input type="email" id="email" placeholder="you@example.com" required />
+        <label>密保问题（用于找回密码）</label>
+        <div class="custom-select" id="secQ-wrap" data-value="">
+          <div class="select-trigger" id="secQ-trigger">— 请选择安全问题 —</div>
+          <div class="select-options" id="secQ-options">
+            <div class="select-option" data-value="">— 请选择安全问题 —</div>
+            <div class="select-option" data-value="我的第一只宠物名字？">我的第一只宠物名字？</div>
+            <div class="select-option" data-value="我母亲的姓名？">我母亲的姓名？</div>
+            <div class="select-option" data-value="我出生城市的名字？">我出生城市的名字？</div>
+            <div class="select-option" data-value="我最喜欢的电影？">我最喜欢的电影？</div>
+            <div class="select-option" data-value="我就读的第一所小学名称？">我就读的第一所小学名称？</div>
+            <div class="select-option" data-value="我的第一辆车品牌？">我的第一辆车品牌？</div>
+          </div>
+        </div>
+        <label for="secA">密保答案</label>
+        <input type="text" id="secA" placeholder="答案" />
+        <button type="submit" id="btn-info">下一步</button>
+      </form>
+      <div id="info-msg" class="msg"></div>
+    </section>
+
+    <!-- ② 邮箱验证（可选） -->
+    <section id="step-2" class="step">
+      <h2 style="font-size:17px;">邮箱验证 <span class="optional">（可选，可暂不验证）</span></h2>
+      <p class="hint">邮箱验证为可选项：你可以现在验证以确认邮箱归属，也可以<b>暂时不进行邮箱验证</b>，后续再处理。下方“跳过邮箱验证，继续”即可进入下一步。邮箱：<b id="email-display"></b></p>
+      <form id="form-email" autocomplete="email">
+        <button type="submit" id="btn-send">发送验证码</button>
+        <div id="email-code-box" style="display:none; margin-top:16px;">
+          <label for="code">邮箱验证码（请查收邮件；开发模式见服务器控制台）</label>
+          <input type="text" id="code" maxlength="6" inputmode="numeric" placeholder="6 位数字" />
+          <button type="button" id="btn-verify-email" class="secondary">验证邮箱</button>
+          <div class="hint" id="resend-hint"></div>
+        </div>
+      </form>
+      <div id="email-msg" class="msg"></div>
+      <button type="button" id="btn-skip-email" class="ghost">跳过邮箱验证，继续</button>
+    </section>
+
+    <!-- ③ 两步验证 -->
+    <section id="step-3" class="step">
+      <h2 style="font-size:17px;">两步验证 (2FA) <span class="badge">强烈建议开启</span></h2>
+      <p class="hint">开启后，每次登录除密码外还需输入验证器动态码，账户更安全。也可暂不开启（需确认已知风险）。</p>
+      <div class="row">
+        <label style="margin:0;"><input type="radio" name="tfa" value="enable" checked /> 开启 2FA</label>
+        <label style="margin:0;"><input type="radio" name="tfa" value="disable" /> 暂不开启</label>
+      </div>
+
+      <div id="tfa-enable-box" style="margin-top:16px;"></div>
+      <div id="tfa-disable-box" style="margin-top:16px; display:none;">
+        <label style="display:flex; align-items:center; gap:8px;">
+          <input type="checkbox" id="riskAck" /> 我知道风险，仍要关闭 2FA
+        </label>
+      </div>
+
+      <button id="btn-complete" disabled>完成注册</button>
+      <div id="tfa-msg" class="msg"></div>
+    </section>
+
+    <!-- ④ 完成 -->
+    <section id="step-4" class="step">
+      <h2 style="font-size:20px;">注册成功</h2>
+      <div id="done-msg" class="msg ok" style="display:block;"></div>
+      <a href="/login.html"><button type="button">前往登录</button></a>
+    </section>
+  </div>
+
+  <script src="/register.js?v=2"></script>
+</body>
+</html>
