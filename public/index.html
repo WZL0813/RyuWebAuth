@@ -366,6 +366,7 @@ input:checked+.tgl-slider::before{transform:translateX(20px)}
 .totp-entry-info{flex:1;min-width:0}
 .totp-entry-name{font-size:14px;font-weight:600;color:var(--text)}
 .totp-entry-issuer{font-size:11px;color:var(--text-dim)}
+.totp-entry-remark{font-size:11px;color:var(--text-dim)}
 .totp-entry-code{font-size:24px;font-weight:700;font-family:'Courier New',monospace;color:var(--accent);letter-spacing:4px;text-align:center;min-width:80px}
 .totp-entry-countdown{font-size:12px;font-weight:600;color:var(--text-dim);text-align:center;min-width:36px;transition:color .3s}
 .totp-entry-countdown.expiring{color:#ef4444}
@@ -373,6 +374,9 @@ input:checked+.tgl-slider::before{transform:translateX(20px)}
 .totp-entry-fill{height:100%;border-radius:2px;background:var(--accent3);transition:width 1s linear}
 .totp-entry-delete{background:none;border:none;color:var(--text-dim);cursor:pointer;padding:4px;font-size:18px;line-height:1;transition:color .2s}
 .totp-entry-delete:hover{color:#ef4444}
+.totp-entry-edit{background:none;border:none;color:var(--text-dim);cursor:pointer;padding:4px;font-size:16px;line-height:1;transition:color .2s}
+.totp-entry-edit:hover{color:var(--accent)}
+.totp-entry-sub-actions{display:flex;gap:2px;align-items:center}
 
 /* QR / Secret */
 .qr-wrap{display:flex;flex-direction:column;align-items:center;margin:18px 0}
@@ -441,6 +445,7 @@ input:checked+.tgl-slider::before{transform:translateX(20px)}
   .toggle-row{flex-direction:column;align-items:flex-start;gap:8px}
   .totp-entry-card{flex-wrap:wrap}
   .totp-entry-code{font-size:20px;min-width:70px}
+  .totp-entry-sub-actions{flex-direction:column}
   #authLogo{margin-bottom:28px}
   #authCard{margin-top:0}
 }
@@ -670,6 +675,21 @@ input:checked+.tgl-slider::before{transform:translateX(20px)}
   </div>
 </div>
 
+<!-- ========== EDIT GENERATOR MODAL ========== -->
+<div class="modal-overlay hidden" id="editGenModal">
+  <div class="modal">
+    <h3 style="font-size:17px;color:var(--text);margin-bottom:18px;">编辑生成器</h3>
+    <div class="error-msg" id="editGenError"></div>
+    <div class="input-group"><label>名称</label><input type="text" id="editGenName" placeholder="例如：GitHub"></div>
+    <div class="input-group"><label>发行方</label><input type="text" id="editGenIssuer" placeholder="例如：GitHub Inc."></div>
+    <div class="input-group"><label>备注</label><input type="text" id="editGenRemark" placeholder="可选"></div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-primary" onclick="doEditGenerator()" style="flex:1;">保存</button>
+      <button class="btn btn-secondary" onclick="closeEditGenerator()" style="flex:1;">取消</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ==================== API Helpers ====================
 const API = {
@@ -889,11 +909,15 @@ function renderTOTPEntryList() {
     html += `<div class="totp-entry-name">${escHtml(e.name)}</div>`;
     if (e.issuer) html += `<div class="totp-entry-issuer">${escHtml(e.issuer)}</div>`;
     html += `<div class="totp-entry-bar"><div class="totp-entry-fill" id="bar_${id}" style="width:100%"></div></div>`;
+    if (e.remark) html += `<div class="totp-entry-remark">${escHtml(e.remark)}</div>`;
     html += '</div>';
     html += `<div class="totp-entry-code" id="code_${id}">------</div>`;
     html += `<div class="totp-entry-countdown" id="count_${id}">--</div>`;
+    html += '<div class="totp-entry-sub-actions">';
+    html += `<button class="totp-entry-edit" onclick="openEditGenerator('${String(e.id).replace(/'/g,"\\'")}','${String(e.name).replace(/'/g,"\\'")}','${String(e.issuer||'').replace(/'/g,"\\'")}','${String(e.remark||'').replace(/'/g,"\\'")}')" title="编辑">&#9998;</button>`;
     html += `<button class="totp-entry-delete" onclick="deleteTOTPEntry('${escHtml(e.id)}')" title="删除">&times;</button>`;
     html += `<button class="totp-entry-delete" onclick="showTOTPDetail('${escHtml(e.id)}')" title="详情" style="font-size:14px;">&#8942;</button>`;
+    html += '</div>';
     html += '</div>';
   });
   content.innerHTML = html;
@@ -1634,6 +1658,32 @@ async function deleteTOTPEntry(id) {
   else{toast('已删除','success');totpEntries=totpEntries.filter(e=>e.id!==id);renderTOTPEntryList()}
 }
 
+let editGenId = '';
+function openEditGenerator(id, name, issuer, remark) {
+  editGenId = id;
+  $('editGenName').value = name || '';
+  $('editGenIssuer').value = issuer || '';
+  $('editGenRemark').value = remark || '';
+  hideError('editGenError');
+  $('editGenModal').classList.remove('hidden');
+  $('editGenName').focus();
+}
+function closeEditGenerator() {
+  $('editGenModal').classList.add('hidden');
+}
+async function doEditGenerator() {
+  hideError('editGenError');
+  const name = $('editGenName').value.trim();
+  const issuer = $('editGenIssuer').value.trim();
+  const remark = $('editGenRemark').value.trim();
+  if (!name) { showError('editGenError', '名称不能为空'); return; }
+  const result = await API.post('/api/2fa/generator/update', { id: editGenId, name, issuer, remark });
+  if (result.error) { showError('editGenError', result.error); return; }
+  closeEditGenerator();
+  toast('生成器已更新', 'success');
+  renderGenTab();
+}
+
 function showTOTPDetail(id) {
   const entry=totpEntries.find(e=>e.id===id); if(!entry)return;
   const issuer=entry.issuer||'', name=entry.name;
@@ -1652,6 +1702,7 @@ $('passwordModal').addEventListener('click',function(e){if(e.target===this)close
 $('deleteAccountModal').addEventListener('click', function(e) { if (e.target === this) closeDeleteAccount(); });
 $('createUserModal').addEventListener('click',function(e){if(e.target===this)closeCreateUser()});
 $('resetPwModal').addEventListener('click', function(e) { if (e.target === this) closeResetPassword(); });
+$('editGenModal').addEventListener('click', function(e) { if (e.target === this) closeEditGenerator(); });
 $('aboutModal').addEventListener('click',function(e){if(e.target===this)closeAbout()});
 
 // ==================== About ====================

@@ -819,7 +819,7 @@ const server = http.createServer(async (req, res) => {
           res.writeHead(200); res.end(JSON.stringify({ entries: [] })); return;
         }
         const all = load2FAEntries();
-        const entries = (all[session.username] || []).map(e => ({ id: e.id, name: e.name, issuer: e.issuer, secret: e.secret, createdAt: e.createdAt }));
+        const entries = (all[session.username] || []).map(e => ({ id: e.id, name: e.name, issuer: e.issuer, remark: e.remark || '', secret: e.secret, createdAt: e.createdAt }));
         res.writeHead(200); res.end(JSON.stringify({ entries })); return;
       }
 
@@ -878,7 +878,7 @@ const server = http.createServer(async (req, res) => {
         if (!all[session.username]) all[session.username] = [];
         all[session.username].push(entry);
         save2FAEntries(all);
-        res.writeHead(201); res.end(JSON.stringify({ success: true, entry: { id: entry.id, name: entry.name, issuer: entry.issuer, secret: entry.secret, createdAt: entry.createdAt } }));
+        res.writeHead(201); res.end(JSON.stringify({ success: true, entry: { id: entry.id, name: entry.name, issuer: entry.issuer, remark: '', secret: entry.secret, createdAt: entry.createdAt } }));
         log('2FA ', `User '${session.username}' added 2FA generator entry '${entry.name}' (${entry.issuer})`, 'green');
         return;
       }
@@ -912,6 +912,28 @@ const server = http.createServer(async (req, res) => {
         save2FAEntries(all);
         res.writeHead(200); res.end(JSON.stringify({ success: true }));
         log('2FA ', `User '${session.username}' deleted 2FA generator entry`, 'green');
+        return;
+      }
+
+      // 更新 2FA 条目
+      if (pathname === '/api/2fa/generator/update' && req.method === 'POST') {
+        const cookies = parseCookies(req);
+        const session = getSession(cookies.session_id);
+        if (!session) { res.writeHead(401); res.end(JSON.stringify({ error: '请先登录' })); return; }
+        const body = await parseBody(req);
+        const { id, name, issuer, remark } = body;
+        if (!id) { res.writeHead(400); res.end(JSON.stringify({ error: '缺少条目ID' })); return; }
+        const all = load2FAEntries();
+        const entries = all[session.username];
+        if (!entries) { res.writeHead(404); res.end(JSON.stringify({ error: '没有生成器条目' })); return; }
+        const entry = entries.find(e => e.id === id);
+        if (!entry) { res.writeHead(404); res.end(JSON.stringify({ error: '条目不存在' })); return; }
+        if (name) entry.name = name;
+        if (issuer) entry.issuer = issuer;
+        if (remark !== undefined) entry.remark = remark;
+        save2FAEntries(all);
+        res.writeHead(200); res.end(JSON.stringify({ success: true, entry: { id: entry.id, name: entry.name, issuer: entry.issuer, remark: entry.remark || '' } }));
+        log('2FA ', `User '${session.username}' updated generator entry '${entry.name}'`, 'green');
         return;
       }
 
