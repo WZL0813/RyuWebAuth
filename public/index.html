@@ -1,0 +1,1592 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>RyuWebAuth - 认证服务</title>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://code.iconify.design/3/3.1.1/iconify.min.js"></script>
+<style>
+/* ========== CSS Variables ========== */
+:root{
+  --bg:#f1f5f9; --card-bg:#ffffff; --accent:#2563eb; --accent2:#1d4ed8;
+  --accent3:#3b82f6; --text:#1e293b; --text-dim:#64748b; --input-bg:#f8fafc;
+  --border:#e2e8f0; --danger:#ef4444; --success:#16a34a; --warn:#f59e0b;
+  --radius:12px; --radius-sm:8px;
+  --shadow:0 1px 3px rgba(0,0,0,.06),0 4px 24px rgba(0,0,0,.06);
+  --shadow-lg:0 8px 40px rgba(0,0,0,.1);
+}
+[data-theme="dark"]{
+  --bg:#0f172a; --card-bg:#1e293b; --accent:#3b82f6; --accent2:#60a5fa;
+  --accent3:#2563eb; --text:#f1f5f9; --text-dim:#94a3b8; --input-bg:#334155;
+  --border:#334155; --danger:#f87171; --success:#4ade80;
+  --shadow:0 1px 3px rgba(0,0,0,.3),0 4px 24px rgba(0,0,0,.3);
+  --shadow-lg:0 8px 40px rgba(0,0,0,.4);
+}
+
+/* ========== Reset ========== */
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+  background:var(--bg); color:var(--text); min-height:100vh;
+  overflow-x:hidden; transition:background .3s,color .3s;
+}
+
+/* ========== Splash Screen ========== */
+#splash{
+  position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;
+  background:var(--bg); transition:opacity .5s ease;
+}
+#splash .splash-text{
+  font-size:clamp(32px,8vw,64px);font-weight:800;color:var(--accent);
+  letter-spacing:-1px;animation:splashIn .5s cubic-bezier(.34,1.56,.64,1) forwards;
+  position:relative;
+}
+@keyframes splashIn{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:scale(1)}}
+@keyframes splashFly{
+  0%{transform:translate(0,0) scale(1);opacity:1}
+  80%{transform:translate(var(--fly-x),var(--fly-y)) scale(var(--fly-s));opacity:.4}
+  100%{transform:translate(var(--fly-x),var(--fly-y)) scale(var(--fly-s));opacity:.2}
+}
+#splash.done{display:none}
+
+/* ========== Watermark ========== */
+#watermark{
+  position:fixed;bottom:40px;right:28px;z-index:9000;pointer-events:none;
+  font-size:13px;font-weight:700;color:var(--accent3);opacity:1;
+  transition:opacity .3s,color .3s;user-select:none;letter-spacing:1px;
+  display:none;
+}
+#watermark.show{display:block}
+#watermark:hover{opacity:.8}
+#watermark.flash{animation:wmFlash .4s ease}
+@keyframes wmFlash{0%,100%{opacity:1}50%{opacity:.7;color:var(--accent)}}
+
+/* ========== Noise & Glow ========== */
+.noise{
+  position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.025;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size:256px 256px;
+}
+.glow{position:fixed;z-index:0;border-radius:50%;filter:blur(130px);pointer-events:none}
+.glow-1{width:500px;height:500px;background:radial-gradient(circle,rgba(59,130,246,.1),transparent 70%);top:-150px;right:-100px}
+.glow-2{width:380px;height:380px;background:radial-gradient(circle,rgba(37,99,235,.08),transparent 70%);bottom:-80px;left:-80px}
+
+/* ========== Footer ========== */
+#footer{
+  position:fixed;bottom:0;left:0;right:0;z-index:100;
+  text-align:center;padding:12px 0;font-size:12px;color:var(--text-dim);
+  border-top:1px solid var(--border);transition:background .3s,border .3s;
+  background:var(--card-bg);
+}
+#footer a{color:var(--accent);text-decoration:none;font-weight:600;transition:color .2s}
+#footer a:hover{color:var(--accent2);text-decoration:underline}
+
+/* ========== Dark/Light Toggle ========== */
+#themeToggle{
+  position:fixed;bottom:20px;left:20px;z-index:9001;width:40px;height:40px;
+  border-radius:50%;border:1.5px solid var(--border);background:var(--card-bg);
+  color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:all .25s;box-shadow:var(--shadow);
+}
+#themeToggle:hover{transform:scale(1.1);box-shadow:var(--shadow-lg)}
+
+/* ========== Main Container ========== */
+.app-wrap{position:relative;z-index:1;width:100%;max-width:460px;margin:0 auto}
+#authCard .app-wrap{padding:80px 20px 20px}
+
+/* ========== Auth Card ========== */
+.card{
+  background:var(--card-bg);border:1px solid var(--border);
+  border-radius:var(--radius);padding:36px 28px;
+  box-shadow:var(--shadow);transition:background .3s,border .3s,box-shadow .3s;
+}
+#authCard{
+  animation:cardIn .55s cubic-bezier(.34,1.56,.64,1);
+  margin-top:40px;
+}
+@keyframes cardIn{from{opacity:0;transform:translateY(24px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+.hidden{display:none!important}
+
+/* ========== Logo ========== */
+.logo{display:flex;align-items:center;gap:14px;margin-bottom:28px}
+.logo-icon{
+  flex-shrink:0;width:52px;height:52px;border-radius:14px;
+  background:linear-gradient(135deg,var(--accent),var(--accent3));
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 18px rgba(37,99,235,.25);
+  color:#fff;font-size:26px;
+}
+.logo-text h2{font-size:20px;font-weight:700;color:var(--text);letter-spacing:-.3px}
+.logo-text span{font-size:12px;color:var(--text-dim)}
+
+/* ========== RyuWebAuth Logo (shared) ========== */
+.ryu-logo{display:flex;align-items:center;gap:10px}
+.ryu-logo .logo-icon{
+  flex-shrink:0;border-radius:12px;
+  background:linear-gradient(135deg,var(--accent),var(--accent3));
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 18px rgba(37,99,235,.25);color:#fff;
+}
+.ryu-logo .logo-label{font-weight:700;color:var(--text);letter-spacing:-.3px}
+
+/* Auth page - top center */
+#authLogo{justify-content:center;margin-bottom:24px}
+#authLogo .logo-icon{width:44px;height:44px}
+#authLogo .logo-label{font-size:22px}
+
+/* Corner - top-left after login */
+#cornerLogo{
+  display:none;padding:12px 20px;width:100%;
+}
+#cornerLogo.show{display:flex}
+#cornerLogo .logo-icon{width:36px;height:36px;border-radius:10px}
+#cornerLogo .logo-label{font-size:18px}
+
+/* ========== Form ========== */
+.input-group{margin-bottom:14px}
+.input-group label{display:block;font-size:12px;font-weight:600;color:var(--text-dim);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px}
+.input-group input{
+  width:100%;padding:11px 13px;border:1.5px solid var(--border);
+  border-radius:var(--radius-sm);background:var(--input-bg);color:var(--text);
+  font-size:14px;outline:none;font-family:inherit;
+  transition:border .25s,box-shadow .25s,background .3s;
+}
+.input-group input:focus{border-color:var(--accent3);box-shadow:0 0 0 3px rgba(59,130,246,.12)}
+.input-group input::placeholder{color:#94a3b8}
+
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:11px 20px;border:none;border-radius:var(--radius-sm);
+  font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;
+  transition:all .2s cubic-bezier(.34,1.56,.64,1);width:100%;
+}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent3));color:#fff;margin-top:4px}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(37,99,235,.3)}
+.btn-primary:active{transform:scale(.97)}
+.btn-secondary{background:var(--bg);color:var(--text);border:1.5px solid var(--border)}
+.btn-secondary:hover{transform:translateY(-1px)}
+.btn-danger{background:rgba(239,68,68,.08);color:var(--danger);border:1.5px solid rgba(239,68,68,.2)}
+.btn-danger:hover{background:rgba(239,68,68,.15);transform:translateY(-1px)}
+.btn-sm{width:auto;padding:6px 14px;font-size:12px}
+.btn-xs{width:auto;padding:3px 9px;font-size:11px;border-radius:5px}
+
+/* ========== Checkbox ========== */
+.chk-row{display:flex;align-items:center;gap:8px;margin:8px 0 4px;font-size:13px;color:var(--text-dim)}
+.chk-row input[type="checkbox"]{width:16px;height:16px;accent-color:var(--accent);cursor:pointer}
+.chk-row label{cursor:pointer;user-select:none}
+
+.link-row{display:flex;align-items:center;gap:6px;margin-top:14px;font-size:13px;color:var(--text-dim)}
+.link-row a{color:var(--accent);cursor:pointer;text-decoration:none;font-weight:600}
+.link-row a:hover{color:var(--accent2)}
+
+.error-msg{
+  background:rgba(239,68,68,.06);border:1.5px solid rgba(239,68,68,.2);
+  border-radius:var(--radius-sm);padding:9px 12px;margin-bottom:12px;
+  font-size:13px;color:#dc2626;display:none;
+}
+.success-msg{
+  background:rgba(34,197,94,.06);border:1.5px solid rgba(34,197,94,.2);
+  border-radius:var(--radius-sm);padding:9px 12px;margin-bottom:12px;
+  font-size:13px;color:#16a34a;display:none;
+}
+
+/* ========== 2FA Code Input ========== */
+.totp-row{display:flex;gap:8px;justify-content:center;margin:18px 0}
+.totp-row input{
+  width:42px;height:52px;text-align:center;font-size:22px;font-weight:700;
+  border:2px solid var(--border);border-radius:var(--radius-sm);
+  background:var(--input-bg);color:var(--text);outline:none;
+  transition:border .2s,box-shadow .2s;font-family:'Courier New',monospace;
+}
+.totp-row input:focus{border-color:var(--accent3);box-shadow:0 0 0 3px rgba(59,130,246,.15)}
+
+/* ========== Toast ========== */
+.toast{
+  position:fixed;bottom:60px;left:50%;transform:translateX(-50%) translateY(12px);
+  padding:10px 24px;border-radius:8px;z-index:9999;font-size:13px;font-weight:600;
+  opacity:0;transition:opacity .35s,transform .35s;pointer-events:none;max-width:90%;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast-success{background:rgba(22,163,74,.92);color:#fff}
+.toast-error{background:rgba(239,68,68,.92);color:#fff}
+
+/* ========== Modal ========== */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(15,23,42,.4);z-index:1000;
+  display:flex;align-items:center;justify-content:center;animation:fadeIn .2s;
+}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal{
+  background:var(--card-bg);border:1px solid var(--border);
+  border-radius:var(--radius);padding:28px;width:90%;max-width:400px;
+  box-shadow:0 12px 48px rgba(0,0,0,.12);
+  animation:cardIn .4s cubic-bezier(.34,1.56,.64,1);
+  transition:background .3s,border .3s;
+}
+.modal-close{
+  position:absolute;top:14px;right:14px;width:32px;height:32px;
+  border:none;background:none;cursor:pointer;color:var(--text-dim);
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  transition:all .2s;
+}
+.modal-close:hover{background:var(--border);color:var(--text)}
+
+/* ========== Dashboard Layout ========== */
+#dashWrap{
+  display:none;flex-direction:column;flex:1;
+}
+#dashWrap.active{display:flex}
+
+/* ========== Main Container (logged-in) ========== */
+.main-container{
+  max-width:850px;width:calc(100% - 40px);margin:20px auto 57px auto;
+  background:var(--card-bg);border:1px solid var(--border);
+  border-radius:var(--radius);box-shadow:var(--shadow-lg);
+  display:none;flex-direction:column;min-height:calc(100vh - 97px);
+  padding-bottom:50px;
+  transition:background .3s,border .3s,box-shadow .3s;
+}
+.main-container.active{display:flex}
+
+/* ========== Top Bar ========== */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 22px;border-bottom:1px solid var(--border);
+  background:var(--card-bg);transition:background .3s,border .3s;
+  border-radius:var(--radius) var(--radius) 0 0;
+  box-shadow:0 1px 4px rgba(0,0,0,.04);
+}
+.topbar-left{display:flex;align-items:center;gap:10px}
+.topbar-username{font-size:16px;font-weight:700;color:var(--text)}
+.role-badge{
+  display:inline-block;font-size:10px;padding:2px 10px;border-radius:20px;
+  font-weight:600;letter-spacing:.3px;white-space:nowrap;
+}
+.badge-sa{background:rgba(239,68,68,.1);color:#dc2626}
+.badge-ad{background:rgba(245,158,11,.12);color:#d97706}
+.badge-us{background:rgba(37,99,235,.1);color:var(--accent)}
+.topbar-right{display:flex;gap:8px}
+
+/* Tab Navigation */
+.tab-nav{
+  display:flex;border-bottom:1px solid var(--border);
+  background:var(--card-bg);transition:background .3s,border .3s;
+}
+.tab-btn{
+  flex:1;text-align:center;padding:12px 0;font-size:14px;font-weight:600;
+  cursor:pointer;background:none;border:none;border-bottom:2px solid transparent;
+  color:var(--text-dim);transition:all .25s;font-family:inherit;
+}
+.tab-btn:hover{color:var(--text)}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* Tab Content with slide */
+.tab-content-wrapper{position:relative;overflow:hidden;flex:1}
+.tab-pane{
+  display:none;padding:20px;max-width:800px;margin:0 auto;width:100%;
+  animation:paneIn .35s cubic-bezier(.4,0,.2,1);
+}
+.tab-pane.active{display:block}
+@keyframes paneIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
+
+/* ========== Section Head ========== */
+.sec-head{
+  font-size:14px;font-weight:700;color:var(--text);margin-bottom:12px;
+  display:flex;align-items:center;gap:8px;
+}
+.sec-head::before{content:'';width:3px;height:16px;border-radius:2px;background:linear-gradient(180deg,var(--accent),var(--accent3))}
+
+/* ========== Toggle ========== */
+.toggle-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 16px;background:var(--bg);border-radius:var(--radius-sm);
+  margin-bottom:14px;border:1px solid var(--border);transition:background .3s,border .3s;
+}
+.toggle-row .lbl{font-size:14px;font-weight:500}
+.toggle-row .hint{font-size:12px;color:var(--text-dim);margin-top:2px}
+.tgl{position:relative;width:46px;height:26px;flex-shrink:0}
+.tgl input{opacity:0;width:0;height:0}
+.tgl-slider{
+  position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;
+  background:#cbd5e1;border-radius:26px;transition:background .3s;
+}
+.tgl-slider::before{
+  content:'';position:absolute;height:20px;width:20px;left:3px;bottom:3px;
+  background:#fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.15);
+  transition:transform .3s;
+}
+input:checked+.tgl-slider{background:var(--success)}
+input:checked+.tgl-slider::before{transform:translateX(20px)}
+
+/* ========== Login Mode Switch ========== */
+.login-mode-switch{
+  position:relative;display:flex;background:var(--input-bg);
+  border-radius:10px;padding:4px;margin-bottom:14px;
+  border:1px solid var(--border);
+}
+.login-mode-switch .pill{
+  position:absolute;top:4px;height:calc(100% - 8px);
+  background:var(--accent);border-radius:8px;
+  transition:transform .3s cubic-bezier(.4,0,.2,1),width .3s ease;
+}
+.login-mode-switch label{
+  flex:1;text-align:center;padding:8px 0;font-size:13px;
+  z-index:1;cursor:pointer;transition:color .3s;user-select:none;
+  color:var(--text-dim);
+}
+.login-mode-switch label.active{color:#fff;font-weight:600}
+
+/* ========== TOTP Generator ========== */
+.gen-sub-tabs{display:flex;gap:0;margin-bottom:14px;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.gen-sub-tab{flex:1;text-align:center;padding:9px 0;font-size:13px;cursor:pointer;background:var(--bg);color:var(--text-dim);transition:all .2s;border:none;outline:none;font-family:inherit}
+.gen-sub-tab.active{background:var(--accent);color:#fff}
+.gen-sub-tab:hover:not(.active){background:var(--border)}
+.gen-sub-panel{display:none}
+.gen-sub-panel.active{display:block}
+.gen-scan-area{width:100%;max-width:320px;margin:0 auto;border-radius:8px;overflow:hidden}
+.gen-scan-area video{width:100%;border-radius:8px}
+.gen-form{display:flex;flex-direction:column;gap:10px}
+.gen-form input{
+  padding:8px 10px;border:1px solid var(--border);border-radius:6px;
+  font-size:13px;background:var(--input-bg);color:var(--text);
+  transition:border .2s;font-family:inherit;
+}
+.gen-form input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(37,99,235,.15)}
+
+.totp-entry-card{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px;background:var(--bg);border-radius:var(--radius-sm);
+  border:1px solid var(--border);margin-bottom:10px;gap:12px;
+  transition:background .3s,border .3s;
+}
+.totp-entry-info{flex:1;min-width:0}
+.totp-entry-name{font-size:14px;font-weight:600;color:var(--text)}
+.totp-entry-issuer{font-size:11px;color:var(--text-dim)}
+.totp-entry-code{font-size:24px;font-weight:700;font-family:'Courier New',monospace;color:var(--accent);letter-spacing:4px;text-align:center;min-width:80px}
+.totp-entry-countdown{font-size:12px;font-weight:600;color:var(--text-dim);text-align:center;min-width:36px;transition:color .3s}
+.totp-entry-countdown.expiring{color:#ef4444}
+.totp-entry-bar{height:3px;border-radius:2px;overflow:hidden;background:var(--border);margin-top:4px}
+.totp-entry-fill{height:100%;border-radius:2px;background:var(--accent3);transition:width 1s linear}
+.totp-entry-delete{background:none;border:none;color:var(--text-dim);cursor:pointer;padding:4px;font-size:18px;line-height:1;transition:color .2s}
+.totp-entry-delete:hover{color:#ef4444}
+
+/* QR / Secret */
+.qr-wrap{display:flex;flex-direction:column;align-items:center;margin:18px 0}
+.qr-box{background:var(--card-bg);padding:14px;border-radius:10px;display:inline-block;box-shadow:0 2px 12px rgba(0,0,0,.08);border:1px solid var(--border)}
+.secret-box{
+  background:var(--bg);padding:10px 14px;border-radius:6px;margin:14px 0;
+  font-family:'Courier New',monospace;font-size:13px;word-break:break-all;
+  color:var(--accent);text-align:center;border:2px dashed var(--border);user-select:all;
+}
+.timer{font-size:30px;font-weight:700;color:var(--accent);font-family:'Courier New',monospace;letter-spacing:5px;margin:12px 0;text-align:center}
+.timer-bar{width:100%;height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:16px}
+.timer-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--accent3),var(--accent));transition:width 1s linear}
+
+/* ========== TOTP Detail Modal ========== */
+.totp-detail-qr{display:flex;justify-content:center;margin-bottom:16px}
+.totp-detail-info{}
+.totp-detail-row{display:flex;gap:10px;margin-bottom:8px;font-size:13px}
+.totp-detail-label{color:var(--text-dim);min-width:50px;font-weight:600}
+.totp-detail-value{color:var(--text);font-family:'Courier New',monospace;word-break:break-all}
+
+/* ========== Admin Panel ========== */
+.utbl{width:100%;border-collapse:collapse;font-size:13px}
+.utbl th{text-align:left;padding:10px;color:var(--text-dim);font-weight:600;border-bottom:2px solid var(--border);font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+.utbl td{padding:10px;border-bottom:1px solid var(--border)}
+.utbl tr:hover td{background:var(--bg)}
+.utbl .acts{display:flex;gap:5px;flex-wrap:wrap}
+
+/* Admin 2FA Detail */
+.admin-2fa-detail-row td{padding:0}
+.admin-2fa-detail-panel{
+  background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:14px 16px;margin:4px 0;display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start;
+  transition:background .3s,border .3s;
+}
+.admin-2fa-qr-wrap{flex-shrink:0}
+.admin-2fa-qr-wrap canvas{display:block;border-radius:8px}
+.admin-2fa-info{flex:1;min-width:180px}
+.admin-2fa-code-row{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+.admin-2fa-code{font-size:28px;font-weight:700;font-family:'Courier New',monospace;color:var(--accent);letter-spacing:5px}
+.admin-2fa-cd{font-size:16px;font-weight:600;color:var(--text-dim);transition:color .3s}
+.admin-2fa-cd.expiring{color:#ef4444}
+.admin-2fa-secret-label{font-size:11px;color:var(--text-dim);margin-bottom:2px}
+.admin-2fa-secret{font-size:13px;font-family:'Courier New',monospace;color:var(--text);background:var(--card-bg);padding:4px 8px;border-radius:4px;word-break:break-all;margin-bottom:10px}
+.admin-2fa-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn-danger-xs{padding:5px 10px;border-radius:5px;border:none;font-size:11px;font-weight:600;cursor:pointer;background:#ef4444;color:#fff;transition:opacity .2s}
+.btn-danger-xs:hover{opacity:.85}
+
+/* ========== Upload Area ========== */
+.upload-area{
+  border:2px dashed var(--border);border-radius:var(--radius-sm);padding:30px;
+  text-align:center;cursor:pointer;transition:all .2s;color:var(--text-dim);
+  background:var(--bg);
+}
+.upload-area:hover{border-color:var(--accent);color:var(--accent)}
+.upload-area input[type="file"]{display:none}
+
+/* ========== Responsive ========== */
+@media(max-width:480px){
+  .main-container{width:calc(100% - 20px);margin:10px auto 10px;border-radius:8px;min-height:calc(100vh - 20px);padding-bottom:50px}
+  .card{padding:24px 16px}
+  .topbar{padding:12px 14px}
+  .tab-pane{padding:14px 10px}
+  .utbl{font-size:11px}
+  .utbl th,.utbl td{padding:7px 6px}
+  .totp-row input{width:36px;height:44px;font-size:19px}
+  .toggle-row{flex-direction:column;align-items:flex-start;gap:8px}
+  .totp-entry-card{flex-wrap:wrap}
+  .totp-entry-code{font-size:20px;min-width:70px}
+  #authLogo{margin-bottom:28px}
+  #authCard{margin-top:0}
+}
+</style>
+</head>
+<body>
+
+<!-- ========== Splash Screen ========== -->
+<div id="splash"><div class="splash-text">RyuWebAuth</div></div>
+
+<!-- ========== Noise & Glow ========== -->
+<div class="noise"></div>
+<div class="glow glow-1"></div>
+<div class="glow glow-2"></div>
+
+<!-- ========== Watermark ========== -->
+<div id="watermark">RyuWebAuth</div>
+
+<!-- ========== Theme Toggle ========== -->
+<button id="themeToggle" title="切换深色/浅色模式">
+  <span class="iconify" data-icon="mdi:weather-night" data-width="20" data-height="20" id="themeIcon"></span>
+</button>
+
+
+<!-- ========== Corner Logo ========== -->
+<div class="ryu-logo" id="cornerLogo">
+  <div class="logo-icon">
+    <span class="iconify" data-icon="mdi:shield-lock" data-width="20" data-height="20"></span>
+  </div>
+  <span class="logo-label">RyuWebAuth</span>
+</div>
+
+<!-- ========== AUTH CARD ========== -->
+<div class="app-wrap" id="authWrap">
+  <div class="ryu-logo" id="authLogo">
+    <div class="logo-icon">
+      <span class="iconify" data-icon="mdi:shield-lock" data-width="24" data-height="24"></span>
+    </div>
+    <span class="logo-label">RyuWebAuth</span>
+  </div>
+  <div class="card" id="authCard">
+    <div class="logo">
+      <div class="logo-icon">
+        <span class="iconify" data-icon="mdi:shield-key" data-width="28" data-height="28"></span>
+      </div>
+      <div class="logo-text">
+        <h2 id="authTitle">欢迎回来</h2>
+        <span id="authSubtitle">登一下，很快的</span>
+      </div>
+    </div>
+    <div class="error-msg" id="authError"></div>
+    <div class="success-msg" id="authSuccess"></div>
+
+    <form id="loginForm" onsubmit="return false;">
+      <div class="input-group">
+        <label>用户名</label>
+        <input type="text" id="loginUser" placeholder="你是谁？" autocomplete="username" required>
+      </div>
+      <div class="input-group">
+        <label>密码</label>
+        <input type="password" id="loginPass" placeholder="嘘，就你知道" autocomplete="current-password" required>
+      </div>
+      <div class="chk-row">
+        <input type="checkbox" id="rememberMe"><label for="rememberMe">30天内自动登录</label>
+      </div>
+      <button class="btn btn-primary" type="submit" onclick="doLogin()">
+        <span class="iconify" data-icon="mdi:login" data-width="18" data-height="18"></span> 登 录
+      </button>
+    </form>
+
+    <form id="registerForm" class="hidden" onsubmit="return false;">
+      <div class="input-group"><label>用户名</label><input type="text" id="regUser" placeholder="3到30位" autocomplete="off" required></div>
+      <div class="input-group"><label>密码</label><input type="password" id="regPass" placeholder="至少6位" autocomplete="new-password" required></div>
+      <div class="input-group"><label>再输一遍</label><input type="password" id="regPass2" placeholder="再输一遍" autocomplete="new-password" required></div>
+      <button class="btn btn-primary" type="submit" onclick="doRegister()">
+        <span class="iconify" data-icon="mdi:account-plus" data-width="18" data-height="18"></span> 注 册
+      </button>
+    </form>
+
+    <div id="twoFactorStep" class="hidden">
+      <p style="font-size:13px;color:var(--text-dim);margin-bottom:10px;">你有2FA保护，输入验证码吧</p>
+      <div class="totp-row" id="totpInputs">
+        <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="off">
+        <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="off">
+        <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="off">
+        <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="off">
+        <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="off">
+        <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="off">
+      </div>
+      <button class="btn btn-primary" onclick="doLoginWith2FA()">
+        <span class="iconify" data-icon="mdi:shield-check" data-width="18" data-height="18"></span> 验证并登录
+      </button>
+      <div class="link-row"><a onclick="cancel2FA()">算了我重登</a></div>
+    </div>
+
+    <div class="link-row">
+      <span id="toggleLabel">没账号？</span>
+      <a id="toggleLink" onclick="toggleAuthMode()">来注册一个</a>
+    </div>
+  </div>
+</div>
+
+<!-- ========== DASHBOARD ========== -->
+<div class="main-container" id="mainContainer"><div id="dashWrap">
+  <div class="topbar">
+    <div class="topbar-left">
+      <span class="topbar-username" id="dashUsername"></span>
+      <span class="role-badge" id="dashRole"></span>
+    </div>
+    <div class="topbar-right">
+      <button class="btn btn-secondary btn-sm" onclick="openChangePassword()">
+        <span class="iconify" data-icon="mdi:lock-reset" data-width="14" data-height="14"></span> 改密
+      </button>
+      <button class="btn btn-secondary btn-sm" onclick="doLogout()">
+        <span class="iconify" data-icon="mdi:logout" data-width="14" data-height="14"></span> 退出
+      </button>
+    </div>
+  </div>
+  <div class="tab-nav">
+    <button class="tab-btn active" data-tab="gen">我的生成器</button>
+    <button class="tab-btn" data-tab="add">添加生成器</button>
+    <button class="tab-btn" data-tab="settings">账号设置</button>
+  </div>
+  <div class="tab-content-wrapper">
+    <div class="tab-pane active" id="pane-gen"><div id="genContent"></div></div>
+    <div class="tab-pane" id="pane-add"><div id="addContent"></div></div>
+    <div class="tab-pane" id="pane-settings"><div id="settingsContent"></div></div>
+    <div class="tab-pane" id="pane-sysconfig"><div id="sysConfigContent"></div></div>
+    <div class="tab-pane" id="pane-users"><div id="usersContent"></div></div>
+  </div>
+</div>
+</div>
+
+<!-- ========== Footer ========== -->
+<div id="footer">
+  &copy; <a href="https://github.com/WZL0813/RyuWebAuth" target="_blank" rel="noopener">RyuWebAuth</a> All Rights Reserved.　　<a href="#" onclick="openAbout();return false;">ⓘ About</a>
+</div>
+
+<!-- ========== TOAST ========== -->
+<div class="toast" id="toast"></div>
+
+<!-- ========== CREATE USER MODAL ========== -->
+<div class="modal-overlay hidden" id="createUserModal">
+  <div class="modal">
+    <h3 style="font-size:17px;color:var(--text);margin-bottom:18px;">创建用户</h3>
+    <div class="error-msg" id="createUserMsg"></div>
+    <div style="margin-bottom:14px;">
+      <label style="display:block;font-size:13px;color:var(--text-dim);margin-bottom:4px;">用户名</label>
+      <input type="text" id="newUserName" placeholder="3-30位字符" maxlength="30" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;background:var(--input-bg);color:var(--text);box-sizing:border-box;">
+    </div>
+    <div style="margin-bottom:18px;">
+      <label style="display:block;font-size:13px;color:var(--text-dim);margin-bottom:4px;">密码</label>
+      <input type="password" id="newUserPass" placeholder="至少6位" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;background:var(--input-bg);color:var(--text);box-sizing:border-box;">
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-primary" onclick="doCreateUser()" style="flex:1;">确定</button>
+      <button class="btn btn-secondary" onclick="closeCreateUser()" style="flex:1;">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== PASSWORD MODAL ========== -->
+<div class="modal-overlay hidden" id="passwordModal">
+  <div class="modal">
+    <h3 style="font-size:17px;color:var(--text);margin-bottom:18px;">改个新密码</h3>
+    <div class="error-msg" id="pwError"></div>
+    <div class="input-group"><label>现在的密码</label><input type="password" id="pwCurrent" placeholder="旧密码"></div>
+    <div class="input-group"><label>新密码</label><input type="password" id="pwNew" placeholder="至少6位"></div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-primary" onclick="doChangePassword()" style="flex:1;">确认修改</button>
+      <button class="btn btn-secondary" onclick="closeChangePassword()" style="flex:1;">算了</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== TOTP DETAIL MODAL ========== -->
+<div class="modal-overlay hidden" id="totpDetailModal">
+  <div class="modal" style="max-width:360px;">
+    <h3 style="font-size:17px;color:var(--text);margin-bottom:18px;padding-right:24px;" id="totpDetailTitle"></h3>
+    <div class="totp-detail-qr" id="totpDetailQr"></div>
+    <div class="totp-detail-info">
+      <div class="totp-detail-row"><span class="totp-detail-label">名称</span><span class="totp-detail-value" id="totpDetailName"></span></div>
+      <div class="totp-detail-row"><span class="totp-detail-label">密钥</span><span class="totp-detail-value" id="totpDetailSecret"></span></div>
+      <div class="totp-detail-row"><span class="totp-detail-label">发行方</span><span class="totp-detail-value" id="totpDetailIssuer"></span></div>
+    </div>
+    <button class="btn btn-secondary" onclick="closeTOTPDetail()" style="width:100%;margin-top:18px;">关闭</button>
+  </div>
+</div>
+
+<!-- ========== ABOUT MODAL ========== -->
+<div class="modal-overlay hidden" id="aboutModal">
+  <div class="modal" style="max-width:700px;max-height:80vh;overflow-y:auto;position:relative;padding-right:44px;">
+    <button class="modal-close" onclick="closeAbout()" title="关闭">
+      <span class="iconify" data-icon="mdi:close" data-width="22" data-height="22"></span>
+    </button>
+    <h3 style="font-size:17px;color:var(--text);margin-bottom:18px;">About RyuWebAuth</h3>
+    <div id="aboutContent" style="font-size:14px;line-height:1.7;color:var(--text);">
+      <p style="color:var(--text-dim);">加载中...</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== API Helpers ====================
+const API = {
+  async post(url, body) {
+    const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+    return r.json();
+  },
+  async get(url) {
+    const r = await fetch(url);
+    return r.json();
+  }
+};
+
+const $ = id => document.getElementById(id);
+function show(id) { $(id).classList.remove('hidden'); }
+function hide(id) { $(id).classList.add('hidden'); }
+
+function toast(msg, type) {
+  const t = $('toast');
+  t.className = 'toast toast-'+type+' show';
+  t.textContent = msg;
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function showError(elId, msg) { const e = $(elId); e.textContent = msg; e.style.display = 'block'; }
+function hideError(elId) { $(elId).style.display = 'none'; }
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ==================== Theme ====================
+function initTheme() {
+  const manual = localStorage.getItem('ryuwa-theme-manual');
+  const saved = localStorage.getItem('ryuwa-theme');
+  let theme;
+  if (manual === 'true' && saved) {
+    theme = saved;
+  } else {
+    theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  document.documentElement.setAttribute('data-theme', theme);
+  updateThemeIcon(theme);
+}
+
+function updateThemeIcon(theme) {
+  const icon = $('themeIcon');
+  if (theme === 'dark') icon.setAttribute('data-icon', 'mdi:weather-sunny');
+  else icon.setAttribute('data-icon', 'mdi:weather-night');
+}
+
+$('themeToggle').addEventListener('click', () => {
+  const current = document.documentElement.getAttribute('data-theme');
+  const next = current === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('ryuwa-theme', next);
+  localStorage.setItem('ryuwa-theme-manual', 'true');
+  updateThemeIcon(next);
+});
+
+// ==================== Splash ====================
+function initSplash() {
+  const splashText = $('splash').querySelector('.splash-text');
+  const watermark = $('watermark');
+
+  setTimeout(() => {
+    // Temporarily show watermark to measure its target position
+    watermark.style.display = 'block';
+    const sr = splashText.getBoundingClientRect();
+    const wr = watermark.getBoundingClientRect();
+    watermark.style.display = '';
+
+    // Exact delta from splash-text center → watermark center
+    const dx = (wr.left + wr.width / 2) - (sr.left + sr.width / 2);
+    const dy = (wr.top + wr.height / 2) - (sr.top + sr.height / 2);
+    const ratio = 13 / parseFloat(getComputedStyle(splashText).fontSize);
+
+    // Inject exact target as CSS custom properties, then swap animation
+    splashText.style.setProperty('--fly-x', dx + 'px');
+    splashText.style.setProperty('--fly-y', dy + 'px');
+    splashText.style.setProperty('--fly-s', ratio);
+    splashText.style.animation = 'none';
+    void splashText.offsetHeight;
+    splashText.style.animation = 'splashFly 1.0s cubic-bezier(0.4, 0, 0.2, 1) forwards';
+
+    splashText.addEventListener('animationend', function onEnd() {
+      splashText.removeEventListener('animationend', onEnd);
+      $('splash').classList.add('done');
+      watermark.classList.add('show');
+      watermark.classList.add('flash');
+      setTimeout(() => watermark.classList.remove('flash'), 500);
+    });
+  }, 1500);
+}
+
+// ==================== State ====================
+let authMode = 'login';
+let pending2FAUser = null;
+let currentUser = null;
+let activeTab = 'gen';
+let totpTimer = null;
+let totpEntries = [];
+let html5QrScanner = null;
+
+// ==================== Init ====================
+(async function init() {
+  initTheme();
+  const session = await API.get('/api/session');
+  if (session.loggedIn) {
+    currentUser = session;
+    showDashboard();
+    $('splash').classList.add('done');
+    $('watermark').classList.add('show');
+  } else {
+    showAuth();
+    initSplash();
+  }
+})();
+
+function showAuth() {
+  $('cornerLogo').classList.remove('show');
+  $('authWrap').classList.remove('hidden');
+  $('dashWrap').classList.remove('active');
+  $('mainContainer').classList.remove('active');
+  $('rememberMe').checked = localStorage.getItem('ryuwa-remember') === 'true';
+  $('watermark').style.opacity = '1';
+}
+
+function showDashboard() {
+  $('cornerLogo').classList.add('show');
+  $('authWrap').classList.add('hidden');
+  $('dashWrap').classList.add('active');
+  $('mainContainer').classList.add('active');
+
+  $('dashUsername').textContent = currentUser.username;
+  const roleText = { superadmin:'超级管理员', admin:'管理员', user:'普通用户' };
+  const roleClass = { superadmin:'badge-sa', admin:'badge-ad', user:'badge-us' };
+  $('dashRole').textContent = roleText[currentUser.role] || currentUser.role;
+  $('dashRole').className = 'role-badge ' + (roleClass[currentUser.role] || 'badge-us');
+
+  // Set up tabs based on role
+  const tabNav = document.querySelector('.tab-nav');
+  const isSuperAdmin = currentUser.role === 'superadmin';
+  const isAdmin = currentUser.role === 'admin';
+  $('watermark').style.opacity = isSuperAdmin ? '1' : '0.3';
+
+  if (isSuperAdmin) {
+    tabNav.innerHTML = `
+      <button class="tab-btn active" data-tab="sysconfig">系统设置</button>
+      <button class="tab-btn" data-tab="users">用户列表</button>
+      <button class="tab-btn" data-tab="settings">账号设置</button>`;
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.onclick = () => switchTab(btn.dataset.tab);
+    });
+    switchTab('sysconfig');
+  } else if (isAdmin) {
+    tabNav.innerHTML = `
+      <button class="tab-btn active" data-tab="gen">我的生成器</button>
+      <button class="tab-btn" data-tab="add">添加生成器</button>
+      <button class="tab-btn" data-tab="settings">账号设置</button>
+      <button class="tab-btn" data-tab="sysconfig">系统设置</button>`;
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.onclick = () => switchTab(btn.dataset.tab);
+    });
+    switchTab('gen');
+  } else {
+    tabNav.innerHTML = `
+      <button class="tab-btn active" data-tab="gen">我的生成器</button>
+      <button class="tab-btn" data-tab="add">添加生成器</button>
+      <button class="tab-btn" data-tab="settings">账号设置</button>`;
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.onclick = () => switchTab(btn.dataset.tab);
+    });
+    switchTab('gen');
+  }
+}
+
+function switchTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id === 'pane-' + tab));
+
+  if (tab === 'gen') renderGeneratorTab();
+  else if (tab === 'add') renderAddTab();
+  else if (tab === 'settings') renderSettingsTab();
+  else if (tab === 'sysconfig') renderSysConfigTab();
+  else if (tab === 'users') renderUsersTab();
+}
+
+// ==================== Generator Tab ====================
+function renderGeneratorTab() {
+  const content = $('genContent');
+  content.innerHTML = '<p style="text-align:center;color:var(--text-dim);padding:16px 0;">加载中...</p>';
+  loadTOTPEntries();
+}
+
+async function loadTOTPEntries() {
+  try {
+    const data = await API.get('/api/2fa/generator/entries');
+    totpEntries = data.entries || [];
+  } catch(e) { totpEntries = []; }
+  renderTOTPEntryList();
+  startTOTPTimer();
+}
+
+function renderTOTPEntryList() {
+  const content = $('genContent');
+  if (totpEntries.length === 0) {
+    content.innerHTML = '<div style="text-align:center;color:var(--text-dim);padding:40px 0;"><span class="iconify" data-icon="mdi:shield-key-outline" data-width="40" data-height="40" style="display:block;margin:0 auto 12px;opacity:.4;"></span><p>还没有验证码条目</p><p style="font-size:12px;">去「添加生成器」标签页添加</p></div>';
+    return;
+  }
+  let html = '';
+  totpEntries.forEach(e => {
+    const id = e.id.replace(/[^a-zA-Z0-9_-]/g, '');
+    html += '<div class="totp-entry-card">';
+    html += '<div class="totp-entry-info">';
+    html += `<div class="totp-entry-name">${escHtml(e.name)}</div>`;
+    if (e.issuer) html += `<div class="totp-entry-issuer">${escHtml(e.issuer)}</div>`;
+    html += `<div class="totp-entry-bar"><div class="totp-entry-fill" id="bar_${id}" style="width:100%"></div></div>`;
+    html += '</div>';
+    html += `<div class="totp-entry-code" id="code_${id}">------</div>`;
+    html += `<div class="totp-entry-countdown" id="count_${id}">--</div>`;
+    html += `<button class="totp-entry-delete" onclick="deleteTOTPEntry('${escHtml(e.id)}')" title="删除">&times;</button>`;
+    html += `<button class="totp-entry-delete" onclick="showTOTPDetail('${escHtml(e.id)}')" title="详情" style="font-size:14px;">&#8942;</button>`;
+    html += '</div>';
+  });
+  content.innerHTML = html;
+  refreshAllCodes();
+}
+
+// ==================== Add Tab ====================
+let activeSubTab = 'scan';
+
+function renderAddTab() {
+  const content = $('addContent');
+  let html = '<div class="gen-sub-tabs">';
+  html += `<button class="gen-sub-tab${activeSubTab==='scan'?' active':''}" onclick="switchAddSubTab('scan')">扫码</button>`;
+  html += `<button class="gen-sub-tab${activeSubTab==='upload'?' active':''}" onclick="switchAddSubTab('upload')">上传图片</button>`;
+  html += `<button class="gen-sub-tab${activeSubTab==='manual'?' active':''}" onclick="switchAddSubTab('manual')">手动输入</button>`;
+  html += '</div>';
+
+  // Scan panel
+  html += `<div class="gen-sub-panel${activeSubTab==='scan'?' active':''}" id="subScan">`;
+  html += '<div class="gen-scan-area" id="genScanArea"><p style="text-align:center;color:var(--text-dim);padding:30px 0;">点击按钮启动摄像头</p></div>';
+  html += '<button class="btn btn-primary" onclick="startScanner()" style="width:100%;margin-top:10px;" id="scanBtn">打开摄像头</button>';
+  html += '<button class="btn btn-secondary hidden" onclick="stopScanner()" style="width:100%;margin-top:10px;" id="stopScanBtn">关闭摄像头</button>';
+  html += '<div id="scanStatus" style="font-size:12px;color:var(--text-dim);margin-top:6px;text-align:center;"></div>';
+  html += '</div>';
+
+  // Upload panel
+  html += `<div class="gen-sub-panel${activeSubTab==='upload'?' active':''}" id="subUpload">`;
+  html += '<div class="upload-area" id="uploadArea" onclick="document.getElementById(\'uploadInput\').click()">';
+  html += '<span class="iconify" data-icon="mdi:image-search" data-width="36" data-height="36" style="display:block;margin:0 auto 8px;"></span>';
+  html += '<p>点击上传含二维码的图片</p><p style="font-size:11px;">支持 PNG / JPG / WEBP</p>';
+  html += '<input type="file" id="uploadInput" accept="image/png,image/jpeg,image/webp" onchange="handleImageUpload(event)">';
+  html += '</div>';
+  html += '<div id="uploadStatus" style="font-size:12px;color:var(--text-dim);margin-top:10px;text-align:center;"></div>';
+  html += '</div>';
+
+  // Manual panel
+  html += `<div class="gen-sub-panel${activeSubTab==='manual'?' active':''}" id="subManual">`;
+  html += '<div class="gen-form">';
+  html += '<input type="text" id="manualName" placeholder="名称（如 user@example.com）">';
+  html += '<input type="text" id="manualSecret" placeholder="Base32 密钥">';
+  html += '<input type="text" id="manualIssuer" placeholder="发行方（如 Google，可选）">';
+  html += '<button class="btn btn-primary" onclick="addManualEntry()" style="width:100%;">添加</button>';
+  html += '<div id="manualStatus" style="font-size:12px;color:var(--text-dim);text-align:center;min-height:18px;"></div>';
+  html += '</div></div>';
+
+  content.innerHTML = html;
+}
+
+function switchAddSubTab(tab) {
+  activeSubTab = tab;
+  // Re-render add tab
+  renderAddTab();
+  // Re-initialize html5-qrcode if needed
+}
+
+// ==================== Settings Tab ====================
+let totpSecret = null;
+
+function renderSettingsTab() {
+  const content = $('settingsContent');
+  let html = '';
+
+  // 2FA section
+  if (currentUser.twoFactorEnabled) {
+    html += '<div class="sec-head">双重验证 (2FA)</div>';
+    html += '<p style="font-size:13px;color:var(--success);margin-bottom:14px;">2FA 已开启，账号更安全</p>';
+    html += '<div class="timer" id="totpTimer">------</div>';
+    html += '<div class="timer-bar"><div class="timer-fill" id="timerBarFill" style="width:100%"></div></div>';
+    html += '<button class="btn btn-danger" onclick="disable2FA()">关闭 2FA</button>';
+    html += '<div id="disable2FASection"></div>';
+  } else {
+    html += '<div class="sec-head">双重验证 (2FA)</div>';
+    html += '<p style="font-size:13px;color:var(--text-dim);margin-bottom:14px;">多一层保护，多一分安心。</p>';
+    html += '<button class="btn btn-primary" onclick="setup2FA()">开启 2FA</button>';
+    html += '<div id="setup2FASection"></div>';
+  }
+
+  html += '<div class="sec-head" style="margin-top:24px;">登录设置</div>';
+  html += '<div class="toggle-row">';
+  html += '<div><div class="lbl">30天自动登录</div><div class="hint">勾选后下次登录免输密码</div></div>';
+  html += `<label class="tgl"><input type="checkbox" ${localStorage.getItem('ryuwa-remember')==='true'?'checked':''} onchange="toggleRemember(this.checked)"><span class="tgl-slider"></span></label>`;
+  html += '</div>';
+
+  content.innerHTML = html;
+
+  if (currentUser.twoFactorEnabled) startTOTPTimer();
+}
+
+function toggleRemember(checked) {
+  localStorage.setItem('ryuwa-remember', checked ? 'true' : 'false');
+  toast(checked ? '已开启30天自动登录' : '已关闭30天自动登录', 'success');
+}
+
+// ==================== Admin: SysConfig Tab ====================
+async function renderSysConfigTab() {
+  const content = $('sysConfigContent');
+  content.innerHTML = '<p style="text-align:center;color:var(--text-dim);padding:16px 0;">加载中...</p>';
+
+  const settingsData = await API.get('/api/admin/settings');
+  const settings = settingsData.settings || {};
+  const loginMode = settings.loginMode || 'all';
+  const modeIndex = { superadmin:0, admin:1, all:2 }[loginMode];
+
+  let html = '<div class="sec-head">系统设置</div>';
+  html += '<div class="toggle-row">';
+  html += '<div><div class="lbl">开放注册</div><div class="hint">关了就只能管理员加人</div></div>';
+  html += `<label class="tgl"><input type="checkbox" ${settings.registrationEnabled?'checked':''} onchange="toggleRegistration(this.checked)"><span class="tgl-slider"></span></label>`;
+  html += '</div>';
+
+  if (currentUser.role === 'superadmin') {
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">';
+    html += '<div class="lbl" style="font-size:14px;font-weight:500;">登录模式</div>';
+    html += '</div>';
+    html += '<div class="login-mode-switch" id="loginModeSwitch">';
+    html += `<div class="pill" style="width:calc(100%/3 - 8px);transform:translateX(calc(100%*${modeIndex} + 4px*${modeIndex}))"></div>`;
+    html += `<label class="${modeIndex===0?'active':''}" data-mode="superadmin" onclick="setLoginMode('superadmin')">超管</label>`;
+    html += `<label class="${modeIndex===1?'active':''}" data-mode="admin" onclick="setLoginMode('admin')">管理员</label>`;
+    html += `<label class="${modeIndex===2?'active':''}" data-mode="all" onclick="setLoginMode('all')">所有用户</label>`;
+    html += '</div>';
+  }
+
+  content.innerHTML = html;
+}
+
+// ==================== Admin: Users Tab ====================
+async function renderUsersTab() {
+  const content = $('usersContent');
+  content.innerHTML = '<p style="text-align:center;color:var(--text-dim);padding:16px 0;">加载中...</p>';
+
+  const usersData = await API.get('/api/admin/users');
+  const users = usersData.users || [];
+
+  let html = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">';
+  html += '<div class="sec-head" style="margin:0;">用户列表 (' + users.length + ')</div>';
+  html += '<button class="btn btn-primary btn-sm" onclick="openCreateUser()">+ 创建用户</button>';
+  html += '</div>';
+  html += '<div style="overflow-x:auto;"><table class="utbl"><thead><tr>';
+  html += '<th>用户名</th><th>角色</th><th>2FA</th><th>注册时间</th><th>操作</th></tr></thead><tbody>';
+
+  users.forEach(u => {
+    const roleNames = { superadmin:'超管', admin:'管理', user:'用户' };
+    const date = new Date(u.createdAt).toLocaleString('zh-CN');
+    const safeId = u.username.replace(/[^a-zA-Z0-9_-]/g, '');
+    html += `<tr id="user_row_${safeId}">`;
+    html += `<td><strong>${escHtml(u.username)}</strong>${u.username==='RyuWebAuth'?' <span style="color:var(--accent);font-size:10px;">(系统)</span>':''}</td>`;
+    html += `<td>${roleNames[u.role]||u.role}</td>`;
+    html += `<td>${u.twoFactorEnabled?'<span style="color:var(--success);">开</span>':'<span style="color:var(--text-dim);">关</span>'}</td>`;
+    html += `<td style="font-size:10px;color:var(--text-dim);">${date}</td>`;
+    html += '<td class="acts">';
+    if (u.username !== 'RyuWebAuth') {
+      if (u.role === 'user') html += `<button class="btn btn-secondary btn-xs" onclick="setUserRole('${escHtml(u.username)}','admin')">升管理</button>`;
+      else if (u.role === 'admin') html += `<button class="btn btn-secondary btn-xs" onclick="setUserRole('${escHtml(u.username)}','user')">降用户</button>`;
+      if (u.twoFactorEnabled) html += ` <button class="btn btn-secondary btn-xs" id="btn2fa_${safeId}" onclick="toggleUser2FADetail('${escHtml(u.username)}')">2FA详情</button>`;
+      html += ` <button class="btn btn-danger btn-xs" onclick="deleteUser('${escHtml(u.username)}')">删除</button>`;
+    }
+    html += '</td></tr>';
+  });
+  html += '</tbody></table></div>';
+
+  content.innerHTML = html;
+}
+
+async function deleteUser(username) {
+  if (!confirm(`确定要删除用户 "${username}" 吗？此操作不可恢复！`)) return;
+  const result = await API.post('/api/admin/delete-user', { username });
+  if (result.success) {
+    toast(`用户 ${username} 已删除`, 'success');
+    renderUsersTab();
+  } else {
+    toast(result.error || '删除失败', 'error');
+  }
+}
+
+// ==================== Admin 2FA State ====================
+const admin2FAState = {};
+let admin2FATimer = null;
+
+// ==================== Create User Modal ====================
+function openCreateUser() {
+  $('createUserMsg').textContent = '';
+  $('createUserMsg').classList.remove('show');
+  $('newUserName').value = '';
+  $('newUserPass').value = '';
+  $('createUserModal').classList.remove('hidden');
+  $('newUserName').focus();
+}
+
+function closeCreateUser() {
+  $('createUserModal').classList.add('hidden');
+}
+
+async function doCreateUser() {
+  const username = $('newUserName').value.trim();
+  const password = $('newUserPass').value;
+  const msg = $('createUserMsg');
+  msg.classList.remove('show');
+  if (!username||!password) { msg.textContent='用户名和密码不能为空'; msg.classList.add('show'); return; }
+  if (username.length<3) { msg.textContent='用户名至少3个字符'; msg.classList.add('show'); return; }
+  if (password.length<6) { msg.textContent='密码至少6个字符'; msg.classList.add('show'); return; }
+  const result = await API.post('/api/admin/create-user', { username, password });
+  if (result.error) { msg.textContent=result.error; msg.classList.add('show'); }
+  else { closeCreateUser(); toast(`用户 ${result.username} 创建成功`, 'success'); renderUsersTab(); }
+}
+
+async function toggleRegistration(enabled) {
+  const result = await API.post('/api/admin/settings', { registrationEnabled: enabled });
+  if (result.success) { toast(enabled?'注册已开放':'注册已关闭', 'success'); }
+  else { toast('操作失败', 'error'); renderSysConfigTab(); }
+}
+
+function setLoginMode(mode) {
+  const sw = $('loginModeSwitch');
+  if (!sw) return;
+  const idx = { superadmin:0, admin:1, all:2 }[mode];
+  const pill = sw.querySelector('.pill');
+  const labels = sw.querySelectorAll('label');
+  pill.style.transform = `translateX(calc(100%*${idx} + 4px*${idx}))`;
+  labels.forEach((l,i) => l.classList.toggle('active', i===idx));
+  API.post('/api/admin/settings', { loginMode: mode }).then(r => {
+    if (!r.success) { toast('设置失败', 'error'); renderSysConfigTab(); }
+  });
+}
+
+async function setUserRole(username, role) {
+  const result = await API.post('/api/admin/set-role', { username, role });
+  if (result.success) { toast(`${username} 现在是${role==='admin'?'管理员':'普通用户'}了`, 'success'); renderUsersTab(); }
+  else { toast(result.error||'操作失败', 'error'); }
+}
+
+async function refreshAdmin2FACode(username) {
+  const st = admin2FAState[username]; if (!st||!st.secret) return;
+  const code = await generateTOTPClient(st.secret);
+  const codeEl = document.getElementById('a2fa_code_'+username.replace(/[^a-zA-Z0-9_-]/g,''));
+  const cdEl = document.getElementById('a2fa_cd_'+username.replace(/[^a-zA-Z0-9_-]/g,''));
+  if (codeEl) codeEl.textContent = code;
+  if (cdEl) { const remaining=30-Math.floor(Date.now()/1000)%30; cdEl.textContent=remaining+'s'; cdEl.className='admin-2fa-cd'+(remaining<=5?' expiring':''); }
+}
+
+function startAdmin2FATimer() {
+  if (admin2FATimer) return;
+  admin2FATimer = setInterval(() => {
+    const names = Object.keys(admin2FAState);
+    if (names.length===0) { stopAdmin2FATimer(); return; }
+    names.forEach(n => refreshAdmin2FACode(n));
+  }, 1000);
+}
+function stopAdmin2FATimer() { if (admin2FATimer) { clearInterval(admin2FATimer); admin2FATimer=null; } }
+
+async function toggleUser2FADetail(username) {
+  const safeId = username.replace(/[^a-zA-Z0-9_-]/g,'');
+  const existing = document.getElementById('a2fa_row_'+safeId);
+  if (existing) {
+    existing.remove(); delete admin2FAState[username];
+    if (Object.keys(admin2FAState).length===0) stopAdmin2FATimer();
+    const btn = document.getElementById('btn2fa_'+safeId);
+    if (btn) { btn.textContent='2FA详情'; btn.style.background=''; btn.style.color=''; }
+    return;
+  }
+  const btn = document.getElementById('btn2fa_'+safeId);
+  if (btn) { btn.textContent='收起'; btn.style.background='var(--accent)'; btn.style.color='#fff'; }
+  const userRow = document.getElementById('user_row_'+safeId);
+  if (!userRow) return;
+  const tr = document.createElement('tr'); tr.id='a2fa_row_'+safeId; tr.className='admin-2fa-detail-row';
+  tr.innerHTML = `<td colspan="5"><div class="admin-2fa-detail-panel" style="justify-content:center;color:var(--text-dim);">加载中...</div></td>`;
+  userRow.after(tr);
+
+  const result = await API.get('/api/admin/user-2fa?username='+encodeURIComponent(username));
+  if (result.error||!result.twoFactorEnabled) {
+    tr.innerHTML = `<td colspan="5"><div class="admin-2fa-detail-panel" style="color:var(--text-dim);">${result.error||'该用户未启用2FA'}</div></td>`;
+    if (btn) { btn.textContent='2FA详情'; btn.style.background=''; btn.style.color=''; }
+    return;
+  }
+  admin2FAState[username] = { secret: result.secret, uri: result.uri };
+  const remaining = 30-Math.floor(Date.now()/1000)%30;
+  tr.innerHTML = `<td colspan="5"><div class="admin-2fa-detail-panel">
+    <div class="admin-2fa-qr-wrap" id="a2fa_qr_${safeId}"></div>
+    <div class="admin-2fa-info">
+      <div class="admin-2fa-code-row"><span class="admin-2fa-code" id="a2fa_code_${safeId}">${escHtml(result.currentCode)}</span><span class="admin-2fa-cd${remaining<=5?' expiring':''}" id="a2fa_cd_${safeId}">${remaining}s</span></div>
+      <div class="admin-2fa-secret-label">密钥 (Base32)</div><div class="admin-2fa-secret">${escHtml(result.secret)}</div>
+      <div class="admin-2fa-actions">
+        <button class="btn-danger-xs" onclick="forceDisable2FA('${escHtml(username)}')">强制关闭2FA</button>
+        <button class="btn btn-secondary btn-xs" onclick="toggleUser2FADetail('${escHtml(username)}')">收起</button>
+      </div>
+    </div></div></td>`;
+  setTimeout(() => {
+    const qrWrap = document.getElementById('a2fa_qr_'+safeId);
+    if (qrWrap&&window.QRCode) { qrWrap.innerHTML=''; new QRCode(qrWrap, { text:result.uri, width:140, height:140, colorDark:'#1e293b', colorLight:'#ffffff', correctLevel:QRCode.CorrectLevel.M }); }
+  }, 100);
+  startAdmin2FATimer();
+}
+
+async function forceDisable2FA(username) {
+  if (!confirm(`确定要强制关闭 ${username} 的2FA吗？`)) return;
+  const result = await API.post('/api/admin/force-disable-2fa', { username });
+  if (result.success) {
+    toast(`${username} 的2FA已强制关闭`, 'success');
+    const safeId = username.replace(/[^a-zA-Z0-9_-]/g,'');
+    const row = document.getElementById('a2fa_row_'+safeId); if (row) row.remove();
+    delete admin2FAState[username];
+    if (Object.keys(admin2FAState).length===0) stopAdmin2FATimer();
+    setTimeout(() => renderUsersTab(), 300);
+  } else { toast(result.error||'操作失败', 'error'); }
+}
+
+// ==================== Auth ====================
+function toggleAuthMode() {
+  hideError('authError'); hideError('authSuccess');
+  if (authMode === 'login') {
+    authMode = 'register';
+    $('loginForm').classList.add('hidden'); $('registerForm').classList.remove('hidden');
+    $('twoFactorStep').classList.add('hidden');
+    $('authTitle').textContent = '创建账号'; $('authSubtitle').textContent = '来，开个新号';
+    $('toggleLabel').textContent = '有号了？'; $('toggleLink').textContent = '去登录';
+  } else {
+    authMode = 'login';
+    $('loginForm').classList.remove('hidden'); $('registerForm').classList.add('hidden');
+    $('twoFactorStep').classList.add('hidden');
+    $('authTitle').textContent = '欢迎回来'; $('authSubtitle').textContent = '登一下，很快的';
+    $('toggleLabel').textContent = '没账号？'; $('toggleLink').textContent = '来注册一个';
+  }
+}
+
+async function doLogin() {
+  hideError('authError');
+  const username = $('loginUser').value.trim();
+  const password = $('loginPass').value;
+  if (!username||!password) { showError('authError','用户名和密码都要填'); return; }
+
+  const rememberMe = $('rememberMe').checked;
+  const result = await API.post('/api/login', { username, password, rememberMe });
+
+  if (result.need2FA) {
+    pending2FAUser = username;
+    $('loginForm').classList.add('hidden'); $('registerForm').classList.add('hidden');
+    $('twoFactorStep').classList.remove('hidden');
+    document.querySelectorAll('#totpInputs input').forEach(i => i.value = '');
+    document.querySelectorAll('#totpInputs input')[0].focus();
+    setupTOTPInputs();
+    return;
+  }
+  if (result.error) { showError('authError', result.error); return; }
+  if (result.success) {
+    currentUser = result;
+    if (result.forcePasswordChange) {
+      showDashboard(); setTimeout(() => { toast('新来的？先改个密码', 'success'); openChangePassword(); }, 400);
+    } else {
+      showDashboard(); toast('嘿，你来了', 'success');
+    }
+  }
+}
+
+function cancel2FA() { pending2FAUser=null; $('loginForm').classList.remove('hidden'); $('twoFactorStep').classList.add('hidden'); }
+
+async function doLoginWith2FA() {
+  hideError('authError');
+  const inputs = document.querySelectorAll('#totpInputs input');
+  let code = ''; inputs.forEach(i => code += i.value);
+  if (code.length!==6) { showError('authError','6位验证码，少一位都不行'); return; }
+  const rememberMe = $('rememberMe').checked;
+  const result = await API.post('/api/login', { username:pending2FAUser, password:$('loginPass').value, totpCode:code, rememberMe });
+  if (result.error) { showError('authError',result.error); inputs.forEach(i=>i.value=''); inputs[0].focus(); return; }
+  if (result.success) {
+    pending2FAUser=null; currentUser=result;
+    if (result.forcePasswordChange) { showDashboard(); setTimeout(()=>{ toast('新来的？先改个密码','success'); openChangePassword(); },400); }
+    else { showDashboard(); toast('嘿，你来了','success'); }
+  }
+}
+
+function setupTOTPInputs() {
+  const inputs = document.querySelectorAll('#totpInputs input');
+  inputs.forEach((inp,i) => {
+    inp.addEventListener('input', e => {
+      const val = e.target.value.replace(/[^0-9]/g,''); e.target.value=val.slice(0,1);
+      if (val&&i<5) inputs[i+1].focus();
+    });
+    inp.addEventListener('keydown', e => {
+      if (e.key==='Backspace'&&!inp.value&&i>0) inputs[i-1].focus();
+      if (e.key==='Enter') doLoginWith2FA();
+    });
+    inp.addEventListener('paste', e => {
+      e.preventDefault();
+      const paste = (e.clipboardData||window.clipboardData).getData('text').replace(/[^0-9]/g,'').slice(0,6);
+      paste.split('').forEach((ch,j)=>{if(j<6)inputs[j].value=ch;});
+      inputs[Math.min(paste.length,5)].focus();
+    });
+  });
+}
+
+async function doRegister() {
+  hideError('authError');
+  const username=$('regUser').value.trim(), password=$('regPass').value, password2=$('regPass2').value;
+  if (!username||!password) { showError('authError','都填上'); return; }
+  if (password!==password2) { showError('authError','两次密码不一样'); return; }
+  const result = await API.post('/api/register', { username, password });
+  if (result.error) { showError('authError',result.error); return; }
+  if (result.success) { currentUser=result; showDashboard(); toast('搞定了','success'); }
+}
+
+async function doLogout() {
+  await API.post('/api/logout', {});
+  currentUser=null; pending2FAUser=null;
+  $('cornerLogo').classList.remove('show');
+  authMode='login';
+  $('loginUser').value=''; $('loginPass').value='';
+  $('loginForm').classList.remove('hidden'); $('registerForm').classList.add('hidden');
+  $('twoFactorStep').classList.add('hidden');
+  $('authTitle').textContent='欢迎回来'; $('authSubtitle').textContent='登一下，很快的';
+  $('toggleLabel').textContent='没账号？'; $('toggleLink').textContent='来注册一个';
+  $('dashWrap').classList.remove('active'); $('authWrap').classList.remove('hidden');
+  $('mainContainer').classList.remove('active');
+  stopAdmin2FATimer();
+  $('watermark').style.opacity = '1';
+  toast('走了？有空再来','success');
+}
+
+// ==================== Change Password ====================
+function openChangePassword() { hideError('pwError'); $('pwCurrent').value=''; $('pwNew').value=''; show('passwordModal'); $('pwCurrent').focus(); }
+function closeChangePassword() { hide('passwordModal'); }
+async function doChangePassword() {
+  hideError('pwError');
+  const cp=$('pwCurrent').value, np=$('pwNew').value;
+  if (!cp||!np) { showError('pwError','新旧密码都要填'); return; }
+  const result = await API.post('/api/change-password', { currentPassword:cp, newPassword:np });
+  if (result.error) { showError('pwError',result.error); return; }
+  closeChangePassword(); toast('密码改了','success');
+}
+
+// ==================== Client TOTP ====================
+function sha1Pure(msg) {
+  function rol(n,s){return(n<<s)|(n>>>(32-s));}
+  function toBytes(m){if(typeof m==='string')return[...new TextEncoder().encode(m)];return[...m];}
+  const bytes=toBytes(msg); let ml=bytes.length*8;
+  bytes.push(0x80); while((bytes.length*8)%512!==448)bytes.push(0);
+  const dvb=new DataView(new ArrayBuffer(8)); dvb.setUint32(0,Math.floor(ml/0x100000000));dvb.setUint32(4,ml);
+  for(let i=0;i<8;i++)bytes.push(dvb.getUint8(i));
+  const w=[]; for(let i=0;i<bytes.length;i+=4)w.push((bytes[i]<<24)|(bytes[i+1]<<16)|(bytes[i+2]<<8)|bytes[i+3]);
+  let h0=0x67452301,h1=0xEFCDAB89,h2=0x98BADCFE,h3=0x10325476,h4=0xC3D2E1F0;
+  for(let i=0;i<w.length;i+=16){
+    const wk=w.slice(i,i+16); for(let j=16;j<80;j++)wk[j]=rol(wk[j-3]^wk[j-8]^wk[j-14]^wk[j-16],1);
+    let a=h0,b=h1,c=h2,d=h3,e=h4;
+    for(let j=0;j<80;j++){
+      let f,k;
+      if(j<20){f=(b&c)|(~b&d);k=0x5A827999;}
+      else if(j<40){f=b^c^d;k=0x6ED9EBA1;}
+      else if(j<60){f=(b&c)|(b&d)|(c&d);k=0x8F1BBCDC;}
+      else{f=b^c^d;k=0xCA62C1D6;}
+      const t=(rol(a,5)+f+e+k+wk[j])>>>0; e=d;d=c;c=rol(b,30)>>>0;b=a;a=t;
+    }
+    h0=(h0+a)>>>0;h1=(h1+b)>>>0;h2=(h2+c)>>>0;h3=(h3+d)>>>0;h4=(h4+e)>>>0;
+  }
+  const r=new ArrayBuffer(20); const dv=new DataView(r);
+  dv.setUint32(0,h0);dv.setUint32(4,h1);dv.setUint32(8,h2);dv.setUint32(12,h3);dv.setUint32(16,h4);
+  return new Uint8Array(r);
+}
+function hmacSha1Pure(keyBytes,message){
+  const bs=64; let k=keyBytes;
+  if(k.length>bs)k=sha1Pure(k);
+  if(k.length<bs){const p=new Uint8Array(bs);p.set(k);k=p;}
+  const op=new Uint8Array(bs),ip=new Uint8Array(bs);
+  for(let i=0;i<bs;i++){op[i]=k[i]^0x5c;ip[i]=k[i]^0x36;}
+  const inner=new Uint8Array(bs+message.length);inner.set(ip);inner.set(message,bs);
+  const ih=sha1Pure(inner);
+  const outer=new Uint8Array(bs+ih.length);outer.set(op);outer.set(ih,bs);
+  return sha1Pure(outer);
+}
+function base32Decode(b32) {
+  const alphabet='ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits=0,value=0; const bytes=[];
+  for (let i=0;i<b32.length;i++){const c=b32[i].toUpperCase();if(c==='=')break;const idx=alphabet.indexOf(c);if(idx===-1)continue;value=(value<<5)|idx;bits+=5;if(bits>=8){bytes.push((value>>>(bits-8))&0xff);bits-=8;}}
+  return new Uint8Array(bytes);
+}
+async function generateTOTPClient(secret, timeStep=30, digits=6) {
+  const counter=Math.floor(Date.now()/1000/timeStep);
+  const counterBuf=new ArrayBuffer(8); new DataView(counterBuf).setBigInt64(0,BigInt(counter));
+  const keyBuf=base32Decode(secret);
+  let hmac;
+  try {
+    const key=await crypto.subtle.importKey('raw',keyBuf,{name:'HMAC',hash:'SHA-1'},false,['sign']);
+    hmac=new Uint8Array(await crypto.subtle.sign('HMAC',key,counterBuf));
+  } catch(e) {
+    hmac=hmacSha1Pure(keyBuf,new Uint8Array(counterBuf));
+  }
+  const offset=hmac[hmac.length-1]&0x0f;
+  const binCode=((hmac[offset]&0x7f)<<24)|((hmac[offset+1]&0xff)<<16)|((hmac[offset+2]&0xff)<<8)|(hmac[offset+3]&0xff);
+  return String(binCode%Math.pow(10,digits)).padStart(digits,'0');
+}
+
+async function refreshAllCodes() {
+  for (const e of totpEntries) {
+    const id=e.id.replace(/[^a-zA-Z0-9_-]/g,'');
+    try { const code=await generateTOTPClient(e.secret); const el=document.getElementById('code_'+id); if(el)el.textContent=code; }
+    catch(err) { const el=document.getElementById('code_'+id); if(el)el.textContent='--'; }
+  }
+  updateAllBars();
+}
+function updateAllBars() {
+  const now=Math.floor(Date.now()/1000), remaining=30-(now%30);
+  for (const e of totpEntries) {
+    const id=e.id.replace(/[^a-zA-Z0-9_-]/g,'');
+    const bar=document.getElementById('bar_'+id); if(bar){bar.style.width=(remaining/30*100)+'%';bar.style.background=remaining<=5?'#ef4444':'var(--accent3)';}
+  }
+}
+function updateAllCountdowns(remaining) {
+  for (const e of totpEntries) {
+    const id=e.id.replace(/[^a-zA-Z0-9_-]/g,'');
+    const el=document.getElementById('count_'+id); if(el){el.textContent=remaining+'s';el.classList.toggle('expiring',remaining<=5);}
+  }
+}
+
+function startTOTPTimer() {
+  if (totpTimer) clearInterval(totpTimer);
+  function update() {
+    const now=Math.floor(Date.now()/1000), remaining=30-(now%30);
+    const timerEl=$('totpTimer');
+    if (timerEl&&currentUser&&currentUser.twoFactorEnabled) { timerEl.textContent='00:'+String(remaining).padStart(2,'0'); }
+    const barEl=$('timerBarFill');
+    if (barEl) { barEl.style.width=(remaining/30*100)+'%'; barEl.style.background=remaining<=5?'linear-gradient(90deg,#ef4444,#f59e0b)':'linear-gradient(90deg,var(--accent3),var(--accent))'; }
+    if (totpEntries.length>0) { if (remaining===30||remaining===29) refreshAllCodes(); updateAllBars(); updateAllCountdowns(remaining); }
+  }
+  update(); totpTimer=setInterval(update,1000);
+}
+
+// ==================== 2FA Setup ====================
+async function setup2FA() {
+  const section=$('setup2FASection'); section.innerHTML='<p style="color:var(--text-dim);padding:10px 0;">生成密钥中...</p>';
+  const result=await API.post('/api/2fa/setup',{});
+  if (result.error){section.innerHTML=`<p style="color:var(--danger);">${result.error}</p>`;return;}
+  totpSecret=result.secret;
+  let html='<div style="margin-top:18px;">';
+  html+='<div class="sec-head">扫码添加</div><div class="qr-wrap"><div class="qr-box"><div id="qrCodeEl"></div></div></div>';
+  html+='<div class="sec-head">或手动输入</div><div class="secret-box">'+totpSecret+'</div>';
+  html+='<p style="font-size:12px;color:var(--text-dim);margin-bottom:14px;">用 Google Authenticator 或 Authy 扫一下</p>';
+  html+='<div class="sec-head">验证激活</div><p style="font-size:13px;color:var(--text-dim);margin-bottom:10px;">输入APP上的6位验证码</p>';
+  html+='<div class="totp-row" id="setupTOTPInputs">';
+  for(let i=0;i<6;i++) html+='<input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="off">';
+  html+='</div><div style="display:flex;gap:10px;">';
+  html+='<button class="btn btn-primary" onclick="verify2FASetup()" style="flex:1;">验证激活</button>';
+  html+='<button class="btn btn-secondary" onclick="cancel2FASetup()" style="flex:1;">算了</button></div></div>';
+  section.innerHTML=html;
+  setTimeout(()=>{
+    const qrEl=document.getElementById('qrCodeEl');
+    if(qrEl){qrEl.innerHTML='';try{new QRCode(qrEl,{text:result.uri,width:190,height:190,colorDark:'#000',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.M})}catch(e){qrEl.innerHTML='<p style="color:var(--danger);">QR码加载失败</p>'}}
+  },100);
+  setupSetupTOTPInputs();
+}
+
+function setupSetupTOTPInputs() {
+  const inputs=document.querySelectorAll('#setupTOTPInputs input');
+  inputs.forEach((inp,i)=>{
+    inp.addEventListener('input',e=>{const val=e.target.value.replace(/[^0-9]/g,'');e.target.value=val.slice(0,1);if(val&&i<5)inputs[i+1].focus()});
+    inp.addEventListener('keydown',e=>{if(e.key==='Backspace'&&!inp.value&&i>0)inputs[i-1].focus();if(e.key==='Enter')verify2FASetup()});
+    inp.addEventListener('paste',e=>{e.preventDefault();const paste=(e.clipboardData||window.clipboardData).getData('text').replace(/[^0-9]/g,'').slice(0,6);paste.split('').forEach((ch,j)=>{if(j<6)inputs[j].value=ch});inputs[Math.min(paste.length,5)].focus()});
+  });
+  if(inputs.length>0)inputs[0].focus();
+}
+
+async function verify2FASetup() {
+  const inputs=document.querySelectorAll('#setupTOTPInputs input');let code='';inputs.forEach(i=>code+=i.value);
+  if(code.length!==6){toast('6位验证码','error');return;}
+  const result=await API.post('/api/2fa/verify-setup',{code});
+  if(result.error){toast(result.error,'error');inputs.forEach(i=>i.value='');inputs[0].focus();return;}
+  currentUser.twoFactorEnabled=true; toast('2FA 已开启','success'); renderSettingsTab();
+}
+
+function cancel2FASetup() { renderSettingsTab(); }
+
+async function disable2FA() {
+  const section=$('disable2FASection');
+  if(!section.innerHTML){
+    section.innerHTML='<div style="margin-top:14px;"><p style="font-size:13px;color:var(--text-dim);margin-bottom:10px;">输入验证码以确认关闭</p><div class="totp-row" id="disableTOTPInputs">'+Array(6).fill('<input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="off">').join('')+'</div><div style="display:flex;gap:10px;"><button class="btn btn-danger" onclick="confirmDisable2FA()" style="flex:1;">确认关闭</button><button class="btn btn-secondary" onclick="cancelDisable2FA()" style="flex:1;">算了</button></div></div>';
+    const inputs=document.querySelectorAll('#disableTOTPInputs input');
+    inputs.forEach((inp,i)=>{
+      inp.addEventListener('input',e=>{const val=e.target.value.replace(/[^0-9]/g,'');e.target.value=val.slice(0,1);if(val&&i<5)inputs[i+1].focus()});
+      inp.addEventListener('keydown',e=>{if(e.key==='Backspace'&&!inp.value&&i>0)inputs[i-1].focus();if(e.key==='Enter')confirmDisable2FA()});
+      inp.addEventListener('paste',e=>{e.preventDefault();const paste=(e.clipboardData||window.clipboardData).getData('text').replace(/[^0-9]/g,'').slice(0,6);paste.split('').forEach((ch,j)=>{if(j<6)inputs[j].value=ch});inputs[Math.min(paste.length,5)].focus()});
+    });
+    inputs[0].focus();
+  }
+}
+async function confirmDisable2FA() {
+  const inputs=document.querySelectorAll('#disableTOTPInputs input');let code='';inputs.forEach(i=>code+=i.value);
+  if(code.length!==6){toast('6位验证码','error');return;}
+  const result=await API.post('/api/2fa/disable',{code});
+  if(result.error){toast(result.error,'error');inputs.forEach(i=>i.value='');inputs[0].focus();return;}
+  currentUser.twoFactorEnabled=false; if(totpTimer){clearInterval(totpTimer);totpTimer=null;}
+  toast('2FA 已关闭','success'); renderSettingsTab();
+}
+function cancelDisable2FA() { renderSettingsTab(); }
+
+// ==================== TOTP Generator ====================
+async function startScanner() {
+  if (typeof Html5Qrcode==='undefined'){$('scanStatus').textContent='扫码库加载失败';return;}
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){$('scanStatus').textContent='当前浏览器不支持摄像头，请使用"上传图片"添加';return;}
+  html5QrScanner=new Html5Qrcode('genScanArea');
+  $('scanBtn').classList.add('hidden');$('stopScanBtn').classList.remove('hidden');
+  $('scanStatus').textContent='请将二维码对准摄像头...';
+  const cameras=[{facingMode:'environment'},{facingMode:'user'}];
+  let started=false;
+  for(const cam of cameras){
+    try{
+      await html5QrScanner.start(cam,{fps:10,qrbox:{width:250,height:250}},async(decodedText)=>{
+        if(!decodedText.startsWith('otpauth://totp/')){$('scanStatus').textContent='不是有效的 TOTP 二维码';return;}
+        stopScanner();
+        const result=await API.post('/api/2fa/generator/add',{uri:decodedText});
+        if(result.error){toast(result.error,'error');$('scanStatus').textContent='添加失败: '+result.error;}
+        else{toast('已添加: '+result.entry.name,'success');$('scanStatus').textContent='添加成功!';loadTOTPEntries();}
+      },(err)=>{ console.warn('Scan error:', err); });
+      started=true;
+      break;
+    }catch(e){}
+  }
+  if(!started){
+    const isLocalhost=location.hostname==='localhost'||location.hostname==='127.0.0.1';
+    $('scanStatus').textContent=location.protocol==='http:'&&!isLocalhost
+      ?'摄像头需要 HTTPS 连接'
+      :'摄像头启动失败，请使用"上传图片"添加';
+    $('scanBtn').classList.remove('hidden');$('stopScanBtn').classList.add('hidden');
+  }
+}
+
+async function stopScanner() {
+  if(html5QrScanner){try{await html5QrScanner.stop()}catch(e){}try{await html5QrScanner.clear()}catch(e){}html5QrScanner=null}
+  $('scanBtn').classList.remove('hidden');$('stopScanBtn').classList.add('hidden');
+}
+
+// ==================== Upload Image QR Scanning ====================
+async function handleImageUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const status = $('uploadStatus');
+  status.textContent = '解析中...';
+  status.style.color = 'var(--text-dim)';
+
+  try {
+    const bitmap = await createImageBitmap(file);
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width; canvas.height = bitmap.height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(bitmap, 0, 0);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+    if (typeof jsQR === 'undefined') {
+      status.textContent = 'jsQR 库加载失败，请刷新页面'; status.style.color = 'var(--danger)'; return;
+    }
+    const code = jsQR(imageData.data, canvas.width, canvas.height);
+    if (!code) {
+      status.textContent = '未检测到二维码，请确保图片包含有效的 TOTP 二维码'; status.style.color = 'var(--warn)'; return;
+    }
+    if (!code.data.startsWith('otpauth://totp/')) {
+      status.textContent = '检测到二维码但不是 TOTP 格式: ' + code.data.substring(0, 30) + '...';
+      status.style.color = 'var(--warn)'; return;
+    }
+    const result = await API.post('/api/2fa/generator/add', { uri: code.data });
+    if (result.error) {
+      status.textContent = '添加失败: ' + result.error; status.style.color = 'var(--danger)';
+    } else {
+      status.textContent = '添加成功: ' + result.entry.name; status.style.color = 'var(--success)';
+      toast('已添加: ' + result.entry.name, 'success');
+      loadTOTPEntries();
+    }
+  } catch (err) {
+    status.textContent = '图片处理失败: ' + err.message; status.style.color = 'var(--danger)';
+  }
+  // Reset file input
+  event.target.value = '';
+}
+
+// ==================== Manual Add ====================
+async function addManualEntry() {
+  const name=$('manualName').value.trim(), secret=$('manualSecret').value.trim(), issuer=$('manualIssuer').value.trim();
+  const status=$('manualStatus');
+  if(!name||!secret){status.style.color='var(--danger)';status.textContent='名称和密钥不能为空';return;}
+  const result=await API.post('/api/2fa/generator/add',{name,secret,issuer});
+  if(result.error){status.style.color='var(--danger)';status.textContent=result.error}
+  else{status.style.color='var(--success)';status.textContent='添加成功!';$('manualName').value='';$('manualSecret').value='';$('manualIssuer').value='';toast('已添加: '+result.entry.name,'success');loadTOTPEntries()}
+}
+
+async function deleteTOTPEntry(id) {
+  if(!confirm('确定删除这个 2FA 条目吗？'))return;
+  const result=await API.post('/api/2fa/generator/delete',{id});
+  if(result.error){toast(result.error,'error')}
+  else{toast('已删除','success');totpEntries=totpEntries.filter(e=>e.id!==id);renderTOTPEntryList()}
+}
+
+function showTOTPDetail(id) {
+  const entry=totpEntries.find(e=>e.id===id); if(!entry)return;
+  const issuer=entry.issuer||'', name=entry.name;
+  $('totpDetailTitle').textContent=issuer?`${issuer}: ${name}`:name;
+  $('totpDetailName').textContent=name;$('totpDetailSecret').textContent=entry.secret;$('totpDetailIssuer').textContent=issuer||'-';
+  const qrDiv=$('totpDetailQr'); qrDiv.innerHTML='';
+  const uri=`otpauth://totp/${encodeURIComponent(issuer||name)}:${encodeURIComponent(name)}?secret=${entry.secret}&issuer=${encodeURIComponent(issuer||name)}`;
+  new QRCode(qrDiv,{text:uri,width:180,height:180,colorDark:'#1e293b',colorLight:'#ffffff'});
+  const overlay=$('totpDetailModal'); overlay.classList.remove('hidden');
+  overlay.addEventListener('click',function handler(e){if(e.target===overlay){closeTOTPDetail();overlay.removeEventListener('click',handler)}});
+}
+function closeTOTPDetail(){$('totpDetailModal').classList.add('hidden')}
+
+// ==================== Modal click outside ====================
+$('passwordModal').addEventListener('click',function(e){if(e.target===this)closeChangePassword()});
+$('createUserModal').addEventListener('click',function(e){if(e.target===this)closeCreateUser()});
+$('aboutModal').addEventListener('click',function(e){if(e.target===this)closeAbout()});
+
+// ==================== About ====================
+async function openAbout() {
+  show('aboutModal');
+  const content = $('aboutContent');
+  try {
+    const r = await fetch('/api/about');
+    if (!r.ok) throw new Error('HTTP '+r.status);
+    const data = await r.json();
+    if (data.error) throw new Error(data.error);
+    content.innerHTML = marked.parse(data.content);
+  } catch(e) {
+    content.innerHTML = '<p style="color:var(--danger);">无法加载 README.md：'+e.message+'</p>';
+  }
+}
+function closeAbout() { hide('aboutModal'); }
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' && !$('aboutModal').classList.contains('hidden')) closeAbout();
+});
+</script>
+</body>
+</html>
