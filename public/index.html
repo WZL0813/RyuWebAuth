@@ -367,7 +367,8 @@ input:checked+.tgl-slider::before{transform:translateX(20px)}
 .totp-entry-name{font-size:14px;font-weight:600;color:var(--text)}
 .totp-entry-issuer{font-size:11px;color:var(--text-dim)}
 .totp-entry-remark{font-size:11px;color:var(--text-dim)}
-.totp-entry-code{font-size:24px;font-weight:700;font-family:'Courier New',monospace;color:var(--accent);letter-spacing:4px;text-align:center;min-width:80px}
+.totp-entry-code{font-size:24px;font-weight:700;font-family:'Courier New',monospace;color:var(--accent);letter-spacing:4px;text-align:center;min-width:80px;cursor:pointer;user-select:none;transition:color .2s}
+.totp-entry-code:hover{color:var(--accent2)}
 .totp-entry-countdown{font-size:12px;font-weight:600;color:var(--text-dim);text-align:center;min-width:36px;transition:color .3s}
 .totp-entry-countdown.expiring{color:#ef4444}
 .totp-entry-bar{height:3px;border-radius:2px;overflow:hidden;background:var(--border);margin-top:4px}
@@ -911,7 +912,7 @@ function renderTOTPEntryList() {
     html += `<div class="totp-entry-bar"><div class="totp-entry-fill" id="bar_${id}" style="width:100%"></div></div>`;
     if (e.remark) html += `<div class="totp-entry-remark">${escHtml(e.remark)}</div>`;
     html += '</div>';
-    html += `<div class="totp-entry-code" id="code_${id}">------</div>`;
+    html += `<div class="totp-entry-code" id="code_${id}" onclick="copyTOTPCode('code_${id}')" title="点击复制">------</div>`;
     html += `<div class="totp-entry-countdown" id="count_${id}">--</div>`;
     html += '<div class="totp-entry-sub-actions">';
     html += `<button class="totp-entry-edit" onclick="openEditGenerator('${String(e.id).replace(/'/g,"\\'")}','${String(e.name).replace(/'/g,"\\'")}','${String(e.issuer||'').replace(/'/g,"\\'")}','${String(e.remark||'').replace(/'/g,"\\'")}')" title="编辑">&#9998;</button>`;
@@ -1682,6 +1683,23 @@ async function doEditGenerator() {
   closeEditGenerator();
   toast('生成器已更新', 'success');
   renderGenTab();
+}
+
+function copyTOTPCode(elId) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const code = el.textContent.replace(/\s/g, '');
+  if (!code || code === '------') return;
+  navigator.clipboard.writeText(code).then(() => {
+    toast('验证码已复制', 'success');
+  }).catch(() => {
+    // fallback for non-HTTPS
+    const ta = document.createElement('textarea');
+    ta.value = code; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    toast('验证码已复制', 'success');
+  });
 }
 
 function showTOTPDetail(id) {

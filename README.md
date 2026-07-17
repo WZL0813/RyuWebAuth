@@ -168,6 +168,7 @@ MIT License
 - 修复后端 GET entries 端点遗漏 `remark` 字段，前端始终无法获取备注数据
 - 备注显示位置从进度条上方移至进度条下方
 - 手机版生成器卡片三个操作按钮改为纵向排列（✎ → × → ⋮）
+- 点击验证码一键复制到剪贴板，含非 HTTPS 环境 fallback
 
 ### 其他
 - 新增 `.gitignore`，忽略 `node_modules/`、`data/*.json`、`*.txt`、`.env`
