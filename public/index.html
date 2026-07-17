@@ -976,6 +976,13 @@ async function renderSysConfigTab() {
   html += `<label class="tgl"><input type="checkbox" ${settings.registrationEnabled?'checked':''} onchange="toggleRegistration(this.checked)"><span class="tgl-slider"></span></label>`;
   html += '</div>';
 
+  if (currentUser.role === 'admin') {
+    html += '<div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--border);">';
+    html += '<div class="lbl" style="margin-bottom:8px;">添加用户</div>';
+    html += '<button class="btn btn-primary btn-sm" onclick="openCreateUser()">+ 添加用户</button>';
+    html += '</div>';
+  }
+
   if (currentUser.role === 'superadmin') {
     html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">';
     html += '<div class="lbl" style="font-size:14px;font-weight:500;">登录模式</div>';
