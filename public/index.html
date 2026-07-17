@@ -602,6 +602,19 @@ input:checked+.tgl-slider::before{transform:translateX(20px)}
   </div>
 </div>
 
+<!-- ========== RESET PASSWORD MODAL ========== -->
+<div class="modal-overlay hidden" id="resetPwModal">
+  <div class="modal">
+    <h3 style="font-size:17px;color:var(--text);margin-bottom:6px;">强制改密 - <span id="resetPwTarget"></span></h3>
+    <div class="error-msg" id="resetPwError"></div>
+    <div class="input-group"><label>新密码</label><input type="password" id="resetPwNew" placeholder="至少6位"></div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-primary" onclick="doResetPassword()" style="flex:1;">确认修改</button>
+      <button class="btn btn-secondary" onclick="closeResetPassword()" style="flex:1;">取消</button>
+    </div>
+  </div>
+</div>
+
 <!-- ========== PASSWORD MODAL ========== -->
 <div class="modal-overlay hidden" id="passwordModal">
   <div class="modal">
@@ -612,6 +625,20 @@ input:checked+.tgl-slider::before{transform:translateX(20px)}
     <div style="display:flex;gap:10px;">
       <button class="btn btn-primary" onclick="doChangePassword()" style="flex:1;">确认修改</button>
       <button class="btn btn-secondary" onclick="closeChangePassword()" style="flex:1;">算了</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== DELETE ACCOUNT MODAL ========== -->
+<div class="modal-overlay hidden" id="deleteAccountModal">
+  <div class="modal">
+    <h3 style="font-size:17px;color:var(--text);margin-bottom:6px;">注销账号</h3>
+    <p style="font-size:12px;color:#ef4444;margin-bottom:16px;">此操作不可撤销！所有生成器和数据将被永久删除。</p>
+    <div class="error-msg" id="delAcctError"></div>
+    <div class="input-group"><label>输入密码确认</label><input type="password" id="delAcctPass" placeholder="请输入当前密码"></div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-danger" onclick="doDeleteAccount()" style="flex:1;">确认注销</button>
+      <button class="btn btn-secondary" onclick="closeDeleteAccount()" style="flex:1;">取消</button>
     </div>
   </div>
 </div>
@@ -950,6 +977,14 @@ function renderSettingsTab() {
   html += `<label class="tgl"><input type="checkbox" ${localStorage.getItem('ryuwa-remember')==='true'?'checked':''} onchange="toggleRemember(this.checked)"><span class="tgl-slider"></span></label>`;
   html += '</div>';
 
+  if (currentUser.role === 'user') {
+    html += '<div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border);">';
+    html += '<div class="sec-head" style="color:#ef4444;">危险操作</div>';
+    html += '<p style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">注销后将永久删除账号及所有生成器数据</p>';
+    html += '<button class="btn btn-danger btn-sm" onclick="openDeleteAccount()">注销账号</button>';
+    html += '</div>';
+  }
+
   content.innerHTML = html;
 
   if (currentUser.twoFactorEnabled) startTOTPTimer();
@@ -1027,6 +1062,7 @@ async function renderUsersTab() {
       if (u.role === 'user') html += `<button class="btn btn-secondary btn-xs" onclick="setUserRole('${escHtml(u.username)}','admin')">升管理</button>`;
       else if (u.role === 'admin') html += `<button class="btn btn-secondary btn-xs" onclick="setUserRole('${escHtml(u.username)}','user')">降用户</button>`;
       if (u.twoFactorEnabled) html += ` <button class="btn btn-secondary btn-xs" id="btn2fa_${safeId}" onclick="toggleUser2FADetail('${escHtml(u.username)}')">2FA详情</button>`;
+      html += ` <button class="btn btn-secondary btn-xs" onclick="openResetPassword('${escHtml(u.username)}')">改密</button>`;
       html += ` <button class="btn btn-danger btn-xs" onclick="deleteUser('${escHtml(u.username)}')">删除</button>`;
     }
     html += '</td></tr>';
@@ -1045,6 +1081,28 @@ async function deleteUser(username) {
   } else {
     toast(result.error || '删除失败', 'error');
   }
+}
+
+let resetPwTarget = '';
+function openResetPassword(username) {
+  resetPwTarget = username;
+  $('resetPwTarget').textContent = username;
+  $('resetPwNew').value = '';
+  hideError('resetPwError');
+  $('resetPwModal').classList.remove('hidden');
+  $('resetPwNew').focus();
+}
+function closeResetPassword() {
+  $('resetPwModal').classList.add('hidden');
+}
+async function doResetPassword() {
+  hideError('resetPwError');
+  const np = $('resetPwNew').value;
+  if (!np || np.length < 6) { showError('resetPwError', '新密码至少6位'); return; }
+  const result = await API.post('/api/admin/reset-password', { username: resetPwTarget, newPassword: np });
+  if (result.error) { showError('resetPwError', result.error); return; }
+  closeResetPassword();
+  toast(`已强制修改 ${resetPwTarget} 的密码`, 'success');
 }
 
 // ==================== Admin 2FA State ====================
@@ -1299,6 +1357,24 @@ async function doChangePassword() {
   const result = await API.post('/api/change-password', { currentPassword:cp, newPassword:np });
   if (result.error) { showError('pwError',result.error); return; }
   closeChangePassword(); toast('密码改了','success');
+}
+
+function openDeleteAccount() {
+  $('delAcctPass').value = '';
+  hideError('delAcctError');
+  $('deleteAccountModal').classList.remove('hidden');
+}
+function closeDeleteAccount() {
+  $('deleteAccountModal').classList.add('hidden');
+}
+async function doDeleteAccount() {
+  hideError('delAcctError');
+  const pw = $('delAcctPass').value;
+  if (!pw) { showError('delAcctError','请输入密码'); return; }
+  const result = await API.post('/api/account/delete', { password:pw });
+  if (result.error) { showError('delAcctError',result.error); return; }
+  closeDeleteAccount();
+  doLogout();
 }
 
 // ==================== Client TOTP ====================
@@ -1573,7 +1649,9 @@ function closeTOTPDetail(){$('totpDetailModal').classList.add('hidden')}
 
 // ==================== Modal click outside ====================
 $('passwordModal').addEventListener('click',function(e){if(e.target===this)closeChangePassword()});
+$('deleteAccountModal').addEventListener('click', function(e) { if (e.target === this) closeDeleteAccount(); });
 $('createUserModal').addEventListener('click',function(e){if(e.target===this)closeCreateUser()});
+$('resetPwModal').addEventListener('click', function(e) { if (e.target === this) closeResetPassword(); });
 $('aboutModal').addEventListener('click',function(e){if(e.target===this)closeAbout()});
 
 // ==================== About ====================

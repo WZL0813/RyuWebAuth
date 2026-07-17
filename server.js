@@ -431,6 +431,55 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
+      // ---------- 注销账号 ----------
+      if (pathname === '/api/account/delete' && req.method === 'POST') {
+        const cookies = parseCookies(req);
+        const session = getSession(cookies.session_id);
+        if (!session) {
+          res.writeHead(401); res.end(JSON.stringify({ error: '请先登录' })); return;
+        }
+        const body = await parseBody(req);
+        const { password } = body;
+        if (!password) {
+          res.writeHead(400); res.end(JSON.stringify({ error: '请输入密码' })); return;
+        }
+        const users = loadUsers();
+        const user = users[session.username];
+        if (!user) {
+          res.writeHead(404); res.end(JSON.stringify({ error: '用户不存在' })); return;
+        }
+        if (session.username === 'RyuWebAuth') {
+          res.writeHead(400); res.end(JSON.stringify({ error: '不能注销超级管理员账号' })); return;
+        }
+        if (session.role === 'superadmin') {
+          res.writeHead(400); res.end(JSON.stringify({ error: '超级管理员账号不支持自助注销' })); return;
+        }
+        if (!verifyPassword(password, user.passwordHash)) {
+          res.writeHead(400); res.end(JSON.stringify({ error: '密码错误' })); return;
+        }
+        // 检查是否还有生成器
+        const entries = load2FAEntries();
+        const userEntries = entries[session.username];
+        if (userEntries && userEntries.length > 0) {
+          res.writeHead(400); res.end(JSON.stringify({ error: `请先删除所有生成器后再注销（当前 ${userEntries.length} 个）` })); return;
+        }
+        // 删除用户
+        delete users[session.username];
+        saveUsers(users);
+        // 清理 sessions
+        const sessions = loadSessions();
+        for (const [sid, s] of Object.entries(sessions)) {
+          if (s.username === session.username) delete sessions[sid];
+        }
+        saveSessions(sessions);
+        // 清理 2FA entries
+        delete entries[session.username];
+        save2FAEntries(entries);
+        res.writeHead(200); res.end(JSON.stringify({ success: true }));
+        log('AUTH', `User '${session.username}' deleted their account`, 'yellow');
+        return;
+      }
+
       // ---------- 管理员：用户列表 ----------
       if (pathname === '/api/admin/users' && req.method === 'GET') {
         const cookies = parseCookies(req);
@@ -593,6 +642,39 @@ const server = http.createServer(async (req, res) => {
 
         res.writeHead(200); res.end(JSON.stringify({ success: true }));
         log('ADM ', `User '${session.username}' deleted user '${username}'`, 'yellow');
+        return;
+      }
+
+      // ---------- 管理员：强制改密 ----------
+      if (pathname === '/api/admin/reset-password' && req.method === 'POST') {
+        const cookies = parseCookies(req);
+        const session = getSession(cookies.session_id);
+        if (!session || session.role !== 'superadmin') {
+          res.writeHead(403); res.end(JSON.stringify({ error: '需要超级管理员权限' })); return;
+        }
+        const body = await parseBody(req);
+        const { username, newPassword } = body;
+        if (!username || !newPassword) {
+          res.writeHead(400); res.end(JSON.stringify({ error: '用户名和新密码不能为空' })); return;
+        }
+        if (newPassword.length < 6) {
+          res.writeHead(400); res.end(JSON.stringify({ error: '新密码长度不能少于6位' })); return;
+        }
+        const users = loadUsers();
+        if (!users[username]) {
+          res.writeHead(404); res.end(JSON.stringify({ error: '用户不存在' })); return;
+        }
+        users[username].passwordHash = hashPassword(newPassword);
+        users[username].forcePasswordChange = true;
+        saveUsers(users);
+        // 清除该用户所有 session，强制重新登录
+        const sessions = loadSessions();
+        for (const [sid, s] of Object.entries(sessions)) {
+          if (s.username === username) delete sessions[sid];
+        }
+        saveSessions(sessions);
+        res.writeHead(200); res.end(JSON.stringify({ success: true }));
+        log('ADM ', `User '${session.username}' reset password for '${username}'`, 'yellow');
         return;
       }
 
