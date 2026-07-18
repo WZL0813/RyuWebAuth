@@ -4,7 +4,12 @@
 
 # RyuWebAuth
 
-![RyuWebAuth Logo](./public/logo-256.png)
+<p align="center">
+  <img src="./public/logo.jpg" alt="RyuWebAuth Logo" width="220">
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="./public/RyoWebAuth.png" alt="Ryo WebAuth Wordmark" width="220">
+</p>
+
 
 Web 认证服务 —— 注册 / 登录 / 2FA 双因素验证 / 用户管理
 
