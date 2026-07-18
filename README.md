@@ -7,7 +7,7 @@
 <p align="center">
   <img src="./public/logo.jpg" alt="RyuWebAuth Logo" width="220">
   &nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="./public/RyoWebAuth.png" alt="Ryo WebAuth Wordmark" width="220">
+  <img src="./public/RyoWebAuth.png" alt="RyoWebAuth Wordmark" width="220">
 </p>
 
 
