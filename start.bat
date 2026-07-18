@@ -20,9 +20,10 @@ echo     \/_/\/ /`/___/^> \/___/   '\/__//__/  \/____/ \/___/   \/_/\/_/\/___/  
 echo                /\___/
 echo                \/__/
 echo.
-echo          Welcome to RyuWebAuth
-echo          A beautiful Web authentication service
-echo          with 2FA / TOTP support
+echo		 Welcome to RyuWebAuth
+echo		 RyuWebAuth Version 1.0.2.2
+echo		 A beautiful Web authentication service
+echo		 with 2FA / TOTP support
 echo.
 echo   ================================================
 echo          Service starting on port %PORT% ...

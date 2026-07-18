@@ -4,11 +4,79 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>RyuWebAuth - 认证服务</title>
+<!-- 网站图标 (RyoWebAuth 猫娘 logo) -->
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<script src="https://code.iconify.design/3/3.1.1/iconify.min.js"></script>
+<!-- 图标: 本地内联 SVG, 不依赖任何外部 CDN -->
+<script>
+// 与原 Iconify 用法兼容: <span class="iconify" data-icon="..." data-width="20" data-height="20"></span>
+// 自动渲染为内联 SVG, 支持动态尺寸/颜色, 不依赖任何外部网络.
+const ICON_SVG = {
+  // mdi:weather-night
+  'mdi:weather-night': '<path d="M17.75 12.5A5.81 5.81 0 0 0 12 6.5a6 6 0 0 1 6 6 5.81 5.81 0 0 1-6 5.5A6 6 0 0 1 6 12a5.81 5.81 0 0 0 11.75.5M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z" fill="currentColor"/>',
+  // mdi:weather-sunny
+  'mdi:weather-sunny': '<path d="M12 7a5 5 0 1 0 5 5 5 5 0 0 0-5-5m0 8a3 3 0 1 1 3-3 3 3 0 0 1-3 3m0-13a1 1 0 0 0 1-1V1a1 1 0 0 0-2 0v1a1 1 0 0 0 1 1m0 18a1 1 0 0 0-1 1v1a1 1 0 0 0 2 0v-1a1 1 0 0 0-1-1M5.64 7.05a1 1 0 1 0 1.41-1.41l-1.06-1.06a1 1 0 0 0-1.41 1.41zm12.73 9.9a1 1 0 0 0-1.41 1.41l1.06 1.06a1 1 0 0 0 1.41-1.41zM4 12a1 1 0 0 0-1-1H2a1 1 0 0 0 0 2h1a1 1 0 0 0 1-1m18-1h-1a1 1 0 0 0 0 2h1a1 1 0 0 0 0-2M5.64 16.95l-1.06 1.06a1 1 0 0 0 1.41 1.41l1.06-1.06a1 1 0 0 0-1.41-1.41M18.36 7.05l1.06-1.06a1 1 0 0 0-1.41-1.41l-1.06 1.06a1 1 0 0 0 1.41 1.41z" fill="currentColor"/>',
+  // mdi:shield-lock
+  'mdi:shield-lock': '<path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4m0 6a3 3 0 0 1 3 3a3 3 0 0 1-.78 2A3 3 0 0 1 13 17h-2a3 3 0 0 1-1.22-5.78A3 3 0 0 1 12 7m0 2a1 1 0 0 0-1 1 1 1 0 0 0 .45.83V13a.5.5 0 0 0 .5.5h.1a.5.5 0 0 0 .5-.5v-2.17A1 1 0 0 0 13 10a1 1 0 0 0-1-1z" fill="currentColor"/>',
+  // mdi:shield-key
+  'mdi:shield-key': '<path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4m0 5a4 4 0 0 1 4 4c0 1.5-.83 2.78-2 3.46V17h-4v-3.54A3.97 3.97 0 0 1 8 10a4 4 0 0 1 4-4m0 2a2 2 0 0 0-2 2 2 2 0 0 0 2 2 2 2 0 0 0 2-2 2 2 0 0 0-2-2z" fill="currentColor"/>',
+  // mdi:shield-key-outline
+  'mdi:shield-key-outline': '<path d="M21 11c0 4.55-3.84 10.74-9 12-5.16-1.26-9-7.45-9-12V5l9-4 9 4v6m-9 10c3.75-1 7-5.46 7-10V6.3l-7-3.11-7 3.11V11c0 4.54 3.25 9 7 10m0-12a4 4 0 0 0-4 4 3.97 3.97 0 0 0 2 3.46V17h4v-3.54A3.97 3.97 0 0 0 16 13a4 4 0 0 0-4-4m0 2a2 2 0 0 1 2 2 2 2 0 0 1-2 2 2 2 0 0 1-2-2 2 2 0 0 1 2-2z" fill="currentColor"/>',
+  // mdi:login
+  'mdi:login': '<path d="M11 7L9.6 8.4l2.6 2.6H2v2h10.2l-2.6 2.6L11 17l5-5-5-5m9 12h-8v2h8c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-8v2h8v14z" fill="currentColor"/>',
+  // mdi:account-plus
+  'mdi:account-plus': '<path d="M15 14a4 4 0 1 0 0-8 4 4 0 0 0 0 8m-9-2v2H4v2H2v-2H0v-2h2v-2h2v2h2m9-11a4 4 0 0 1 4 4 4 4 0 0 1-1.6 3.2 5.97 5.97 0 0 1 3.6 5.5V17h-2v-3.3c0-1.93-1.57-3.5-3.5-3.5h-1A3.5 3.5 0 0 0 11 13.7V17H9v-3.3a5.97 5.97 0 0 1 3.6-5.5A4 4 0 0 1 11 5a4 4 0 0 1 4-4m0 2a2 2 0 0 0-2 2 2 2 0 0 0 2 2 2 2 0 0 0 2-2 2 2 0 0 0-2-2z" fill="currentColor"/>',
+  // mdi:shield-check
+  'mdi:shield-check': '<path d="M10 17l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8m0-18L1 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" fill="currentColor"/>',
+  // mdi:lock-reset
+  'mdi:lock-reset': '<path d="M12.63 2c5.53 0 10.01 4.5 10.01 10s-4.48 10-10.01 10C7.35 22 3.07 18.56 2.61 14H4.65c.45 3.69 3.62 6.55 7.48 6.95V19a4 4 0 0 1-4-4 4 4 0 0 1 4-4h2.74c-.65-1.32-2.02-2.2-3.54-2.2-2.18 0-3.95 1.78-3.95 3.95H5.3a5.99 5.99 0 0 1 6.4-6c2.27 0 4.26 1.27 5.27 3.15l1.5-1.5 1.42 1.42-3 3-1.42-1.42 1.27-1.27A4 4 0 0 0 13.69 9h-1.94A6 6 0 0 1 18 15a6 6 0 0 1-6 6c-3.31 0-6-2.69-6-6s2.69-6 6-6h.95C12.46 4.65 7.96 4.13 4.6 5.86l-1.2-1.6C7.39 2.42 11.84 1.84 15.93 4.3c4.81 2.88 6.41 8.92 3.54 13.7L21 19.5l-1.41 1.42-2.7-2.7 2.7-2.7L21 16.93l-1.18 1.18A11.95 11.95 0 0 0 12.63 2z" fill="currentColor"/>',
+  // mdi:logout
+  'mdi:logout': '<path d="M17 8l-1.41 1.41L17.17 11H9v2h8.17l-1.58 1.58L17 16l4-4-4-4M5 5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7v-2H5V5z" fill="currentColor"/>',
+  // mdi:close
+  'mdi:close': '<path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z" fill="currentColor"/>',
+  // mdi:image-search
+  'mdi:image-search': '<path d="M15.5 9c.83 0 1.5-.67 1.5-1.5S16.33 6 15.5 6 14 6.67 14 7.5s.67 1.5 1.5 1.5m5.5 10.5V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2m-2 .5H5v-3.5l3.5-4.5 3 3.62L17 9.5l4 7V20M5 7.5C5 6.67 5.67 6 6.5 6h11c.83 0 1.5.67 1.5 1.5V16l-3.5-4.5L11 16l-3-3.5L5 17v-9.5z" fill="currentColor"/>'
+};
+// 渲染所有 .iconify 元素
+function renderIconify(root) {
+  (root || document).querySelectorAll('.iconify').forEach(function(el) {
+    var name = el.getAttribute('data-icon') || '';
+    // 如果上次渲染的就是当前 data-icon, 跳过 (避免重复工作)
+    if (el.dataset.renderedIcon === name && el.querySelector('svg')) return;
+    var svg = ICON_SVG[name];
+    if (!svg) { return; } // 未知图标静默跳过, 不留空框
+    var w = el.getAttribute('data-width') || '20';
+    var h = el.getAttribute('data-height') || w;
+    var style = el.getAttribute('style') || '';
+    el.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="' + w + '" height="' + h + '" style="' + style + 'display:inline-block;vertical-align:middle;">' + svg + '</svg>';
+    el.dataset.renderedIcon = name;
+  });
+}
+// 兼容旧属性 (v1.0.2.1)
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.iconify[data-rendered="1"]').forEach(function(el){
+    el.removeAttribute('data-rendered');
+  });
+});
+document.addEventListener('DOMContentLoaded', function() { renderIconify(document); });
+// 兼容: 已有代码可能在切换 tab 时通过 innerHTML 注入新图标, 用 MutationObserver 兜底
+new MutationObserver(function(muts) {
+  for (var i = 0; i < muts.length; i++) {
+    muts[i].addedNodes.forEach(function(n) {
+      if (n.nodeType === 1) {
+        if (n.classList && n.classList.contains('iconify')) renderIconify(n.parentNode || document);
+        else if (n.querySelectorAll) renderIconify(n);
+      }
+    });
+  }
+}).observe(document.body, { childList: true, subtree: true });
+</script>
 <style>
 /* ========== CSS Variables ========== */
 :root{
@@ -96,7 +164,7 @@ body{
 
 /* ========== Main Container ========== */
 .app-wrap{position:relative;z-index:1;width:100%;max-width:460px;margin:0 auto}
-#authCard .app-wrap{padding:80px 20px 20px}
+#authWrap{padding:48px 20px 20px;min-height:100vh;box-sizing:border-box}
 
 /* ========== Auth Card ========== */
 .card{
@@ -118,7 +186,25 @@ body{
   background:linear-gradient(135deg,var(--accent),var(--accent3));
   display:flex;align-items:center;justify-content:center;
   box-shadow:0 4px 18px rgba(37,99,235,.25);
-  color:#fff;font-size:26px;
+  color:#fff;font-size:26px;overflow:hidden;
+}
+/* 新品牌 logo: RyoWebAuth 猫娘 (logo-128.png)
+   覆盖默认渐变背景, 让图片本身作为图标展示, 圆角容器裁剪多余边距 */
+.logo-icon:has(.brand-img){
+  background:transparent;box-shadow:0 4px 14px rgba(37,99,235,.18);
+  padding:2px;
+}
+.logo-icon .brand-img{width:100%;height:100%;object-fit:cover;border-radius:12px;display:block}
+/* 登录卡片左侧 wordmark (RyoWebAuth.png) - 横向文字 logo, 适合宽高比 3:2
+   用专属类避免被 .brand-img 的 cover 裁剪, 容器放宽 */
+.logo-icon-wordmark{
+  width:auto;min-width:120px;max-width:160px;height:64px;
+  background:transparent!important;box-shadow:none!important;
+  padding:0;border-radius:0;
+}
+.logo-icon-wordmark .wordmark-img{
+  width:100%;height:100%;object-fit:contain;display:block;
+  border-radius:0;background:transparent;
 }
 .logo-text h2{font-size:20px;font-weight:700;color:var(--text);letter-spacing:-.3px}
 .logo-text span{font-size:12px;color:var(--text-dim)}
@@ -129,18 +215,26 @@ body{
   flex-shrink:0;border-radius:12px;
   background:linear-gradient(135deg,var(--accent),var(--accent3));
   display:flex;align-items:center;justify-content:center;
-  box-shadow:0 4px 18px rgba(37,99,235,.25);color:#fff;
+  box-shadow:0 4px 18px rgba(37,99,235,.25);color:#fff;overflow:hidden;
 }
+.ryu-logo .logo-icon:has(.brand-img){
+  background:transparent;box-shadow:0 3px 12px rgba(37,99,235,.18);padding:2px;
+}
+.ryu-logo .logo-icon .brand-img{width:100%;height:100%;object-fit:cover;border-radius:10px;display:block}
 .ryu-logo .logo-label{font-weight:700;color:var(--text);letter-spacing:-.3px}
 
-/* Auth page - top center */
-#authLogo{justify-content:center;margin-bottom:24px}
+/* Auth page - top center, vertical stack so icon is centered */
+#authLogo{
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:8px;margin:0 0 24px 0;padding-top:8px;
+}
 #authLogo .logo-icon{width:44px;height:44px}
-#authLogo .logo-label{font-size:22px}
+#authLogo .logo-label{font-size:20px;font-weight:700;letter-spacing:-.3px}
 
 /* Corner - top-left after login */
 #cornerLogo{
-  display:none;padding:12px 20px;width:100%;
+  display:none;padding:24px 20px 12px;width:100%;
+  justify-content:flex-start;align-items:center;
 }
 #cornerLogo.show{display:flex}
 #cornerLogo .logo-icon{width:36px;height:36px;border-radius:10px}
@@ -474,7 +568,7 @@ input:checked+.tgl-slider::before{transform:translateX(20px)}
 <!-- ========== Corner Logo ========== -->
 <div class="ryu-logo" id="cornerLogo">
   <div class="logo-icon">
-    <span class="iconify" data-icon="mdi:shield-lock" data-width="20" data-height="20"></span>
+    <img src="/logo-128.png" alt="RyuWebAuth" class="brand-img">
   </div>
   <span class="logo-label">RyuWebAuth</span>
 </div>
@@ -483,14 +577,14 @@ input:checked+.tgl-slider::before{transform:translateX(20px)}
 <div class="app-wrap" id="authWrap">
   <div class="ryu-logo" id="authLogo">
     <div class="logo-icon">
-      <span class="iconify" data-icon="mdi:shield-lock" data-width="24" data-height="24"></span>
+      <img src="/logo-128.png" alt="RyuWebAuth" class="brand-img">
     </div>
     <span class="logo-label">RyuWebAuth</span>
   </div>
   <div class="card" id="authCard">
     <div class="logo">
-      <div class="logo-icon">
-        <span class="iconify" data-icon="mdi:shield-key" data-width="28" data-height="28"></span>
+      <div class="logo-icon logo-icon-wordmark">
+        <img src="/RyoWebAuth.png" alt="RyoWebAuth" class="wordmark-img">
       </div>
       <div class="logo-text">
         <h2 id="authTitle">欢迎回来</h2>
@@ -519,7 +613,7 @@ input:checked+.tgl-slider::before{transform:translateX(20px)}
 
     <form id="registerForm" class="hidden" onsubmit="return false;">
       <div class="input-group"><label>用户名</label><input type="text" id="regUser" placeholder="3到30位" autocomplete="off" required></div>
-      <div class="input-group"><label>密码</label><input type="password" id="regPass" placeholder="至少6位" autocomplete="new-password" required></div>
+      <div class="input-group"><label>密码</label><input type="password" id="regPass" placeholder="≥8位，含两类字符" autocomplete="new-password" required></div>
       <div class="input-group"><label>再输一遍</label><input type="password" id="regPass2" placeholder="再输一遍" autocomplete="new-password" required></div>
       <button class="btn btn-primary" type="submit" onclick="doRegister()">
         <span class="iconify" data-icon="mdi:account-plus" data-width="18" data-height="18"></span> 注 册
@@ -599,7 +693,7 @@ input:checked+.tgl-slider::before{transform:translateX(20px)}
     </div>
     <div style="margin-bottom:18px;">
       <label style="display:block;font-size:13px;color:var(--text-dim);margin-bottom:4px;">密码</label>
-      <input type="password" id="newUserPass" placeholder="至少6位" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;background:var(--input-bg);color:var(--text);box-sizing:border-box;">
+      <input type="password" id="newUserPass" placeholder="≥8位，含两类字符" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;background:var(--input-bg);color:var(--text);box-sizing:border-box;">
     </div>
     <div style="display:flex;gap:10px;">
       <button class="btn btn-primary" onclick="doCreateUser()" style="flex:1;">确定</button>
@@ -613,7 +707,7 @@ input:checked+.tgl-slider::before{transform:translateX(20px)}
   <div class="modal">
     <h3 style="font-size:17px;color:var(--text);margin-bottom:6px;">强制改密 - <span id="resetPwTarget"></span></h3>
     <div class="error-msg" id="resetPwError"></div>
-    <div class="input-group"><label>新密码</label><input type="password" id="resetPwNew" placeholder="至少6位"></div>
+    <div class="input-group"><label>新密码</label><input type="password" id="resetPwNew" placeholder="≥8位，含两类字符"></div>
     <div style="display:flex;gap:10px;">
       <button class="btn btn-primary" onclick="doResetPassword()" style="flex:1;">确认修改</button>
       <button class="btn btn-secondary" onclick="closeResetPassword()" style="flex:1;">取消</button>
@@ -627,7 +721,7 @@ input:checked+.tgl-slider::before{transform:translateX(20px)}
     <h3 style="font-size:17px;color:var(--text);margin-bottom:18px;">改个新密码</h3>
     <div class="error-msg" id="pwError"></div>
     <div class="input-group"><label>现在的密码</label><input type="password" id="pwCurrent" placeholder="旧密码"></div>
-    <div class="input-group"><label>新密码</label><input type="password" id="pwNew" placeholder="至少6位"></div>
+    <div class="input-group"><label>新密码</label><input type="password" id="pwNew" placeholder="≥8位，含两类字符"></div>
     <div style="display:flex;gap:10px;">
       <button class="btn btn-primary" onclick="doChangePassword()" style="flex:1;">确认修改</button>
       <button class="btn btn-secondary" onclick="closeChangePassword()" style="flex:1;">算了</button>
@@ -693,16 +787,46 @@ input:checked+.tgl-slider::before{transform:translateX(20px)}
 
 <script>
 // ==================== API Helpers ====================
+// 从 cookie 读取 CSRF token (服务端在登录/注册时下发, 非 HttpOnly)
+function getCsrfToken() {
+  const m = /(?:^|;\s*)csrf_token=([^;]+)/.exec(document.cookie);
+  return m ? decodeURIComponent(m[1]) : '';
+}
 const API = {
   async post(url, body) {
-    const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
-    return r.json();
+    const headers = { 'Content-Type': 'application/json' };
+    // 写操作需要附带 CSRF token (login/register 不带 session, 不需要)
+    if (!/^\/api\/(login|register)$/.test(url)) {
+      const t = getCsrfToken();
+      if (t) headers['X-CSRF-Token'] = t;
+    }
+    const r = await fetch(url, { method:'POST', headers, body:JSON.stringify(body||{}), credentials:'same-origin' });
+    const data = await r.json().catch(() => ({}));
+    if (r.status === 403 && /CSRF/i.test(data.error||'')) {
+      // CSRF 失效提示 (如 session 跨标签页登出后)
+      toast('会话已过期, 请重新登录', 'error');
+    }
+    return data;
   },
   async get(url) {
-    const r = await fetch(url);
+    const r = await fetch(url, { credentials:'same-origin' });
     return r.json();
   }
 };
+
+// 客户端密码强度校验: 与服务端保持一致
+function clientCheckPasswordStrength(pw) {
+  if (typeof pw !== 'string' || !pw) return '密码不能为空';
+  if (pw.length < 8) return '密码长度不能少于 8 位';
+  if (pw.length > 128) return '密码长度不能超过 128 位';
+  let classes = 0;
+  if (/[a-z]/.test(pw)) classes++;
+  if (/[A-Z]/.test(pw)) classes++;
+  if (/[0-9]/.test(pw)) classes++;
+  if (/[^A-Za-z0-9]/.test(pw)) classes++;
+  if (classes < 2) return '密码必须包含至少两类字符 (小写/大写/数字/符号)';
+  return null;
+}
 
 const $ = id => document.getElementById(id);
 function show(id) { $(id).classList.remove('hidden'); }
@@ -792,7 +916,6 @@ let pending2FAUser = null;
 let currentUser = null;
 let activeTab = 'gen';
 let totpTimer = null;
-let totpEntries = [];
 let html5QrScanner = null;
 
 // ==================== Init ====================
@@ -881,6 +1004,10 @@ function switchTab(tab) {
 }
 
 // ==================== Generator Tab ====================
+let totpEntries = [];
+// 按 id 缓存已获取的 secret (内存级, 不持久化)
+const totpSecretCache = new Map();
+
 function renderGeneratorTab() {
   const content = $('genContent');
   content.innerHTML = '<p style="text-align:center;color:var(--text-dim);padding:16px 0;">加载中...</p>';
@@ -892,8 +1019,21 @@ async function loadTOTPEntries() {
     const data = await API.get('/api/2fa/generator/entries');
     totpEntries = data.entries || [];
   } catch(e) { totpEntries = []; }
+  // 切换列表时清空 secret 缓存, 旧条目需要重新拉取
+  totpSecretCache.clear();
   renderTOTPEntryList();
   startTOTPTimer();
+}
+
+// 按需拉取并缓存条目 secret
+async function fetchTOTPSecret(id) {
+  if (totpSecretCache.has(id)) return totpSecretCache.get(id);
+  const r = await API.get('/api/2fa/generator/secret?id=' + encodeURIComponent(id));
+  if (r && r.secret) {
+    totpSecretCache.set(id, r.secret);
+    return r.secret;
+  }
+  return null;
 }
 
 function renderTOTPEntryList() {
@@ -904,24 +1044,50 @@ function renderTOTPEntryList() {
   }
   let html = '';
   totpEntries.forEach(e => {
-    const id = e.id.replace(/[^a-zA-Z0-9_-]/g, '');
+    // id 仅做有限字符过滤后用作 DOM id 后缀; 真实 id 放在 data-* 中传递
+    const idSafe = String(e.id).replace(/[^a-zA-Z0-9_-]/g, '');
+    const dataId = escHtml(String(e.id));
     html += '<div class="totp-entry-card">';
     html += '<div class="totp-entry-info">';
     html += `<div class="totp-entry-name">${escHtml(e.name)}</div>`;
     if (e.issuer) html += `<div class="totp-entry-issuer">${escHtml(e.issuer)}</div>`;
-    html += `<div class="totp-entry-bar"><div class="totp-entry-fill" id="bar_${id}" style="width:100%"></div></div>`;
+    html += `<div class="totp-entry-bar"><div class="totp-entry-fill" id="bar_${idSafe}" style="width:100%"></div></div>`;
     if (e.remark) html += `<div class="totp-entry-remark">${escHtml(e.remark)}</div>`;
     html += '</div>';
-    html += `<div class="totp-entry-code" id="code_${id}" onclick="copyTOTPCode('code_${id}')" title="点击复制">------</div>`;
-    html += `<div class="totp-entry-countdown" id="count_${id}">--</div>`;
+    // 使用 data-* 属性 + 事件委托, 完全避免在 HTML 属性中嵌入用户输入
+    html += `<div class="totp-entry-code" data-code-target="1" id="code_${idSafe}" title="点击复制">------</div>`;
+    html += `<div class="totp-entry-countdown" id="count_${idSafe}">--</div>`;
     html += '<div class="totp-entry-sub-actions">';
-    html += `<button class="totp-entry-edit" onclick="openEditGenerator('${String(e.id).replace(/'/g,"\\'")}','${String(e.name).replace(/'/g,"\\'")}','${String(e.issuer||'').replace(/'/g,"\\'")}','${String(e.remark||'').replace(/'/g,"\\'")}')" title="编辑">&#9998;</button>`;
-    html += `<button class="totp-entry-delete" onclick="deleteTOTPEntry('${escHtml(e.id)}')" title="删除">&times;</button>`;
-    html += `<button class="totp-entry-delete" onclick="showTOTPDetail('${escHtml(e.id)}')" title="详情" style="font-size:14px;">&#8942;</button>`;
+    html += `<button class="totp-entry-edit" data-action="edit" data-id="${dataId}" title="编辑">&#9998;</button>`;
+    html += `<button class="totp-entry-delete" data-action="delete" data-id="${dataId}" title="删除">&times;</button>`;
+    html += `<button class="totp-entry-delete" data-action="detail" data-id="${dataId}" title="详情" style="font-size:14px;">&#8942;</button>`;
     html += '</div>';
     html += '</div>';
   });
   content.innerHTML = html;
+
+  // 事件委托: 一个监听器处理所有按钮点击
+  if (!content._genClickBound) {
+    content._genClickBound = true;
+    content.addEventListener('click', (ev) => {
+      const codeEl = ev.target.closest('[data-code-target]');
+      if (codeEl) { copyTOTPCode(codeEl.id); return; }
+      const btn = ev.target.closest('button[data-action]');
+      if (!btn) return;
+      const id = btn.getAttribute('data-id');
+      if (!id) return;
+      const act = btn.getAttribute('data-action');
+      if (act === 'edit') {
+        const e = totpEntries.find(x => x.id === id);
+        if (e) openEditGenerator(e.id, e.name, e.issuer || '', e.remark || '');
+      } else if (act === 'delete') {
+        deleteTOTPEntry(id);
+      } else if (act === 'detail') {
+        showTOTPDetail(id);
+      }
+    });
+  }
+
   refreshAllCodes();
 }
 
@@ -1055,7 +1221,49 @@ async function renderSysConfigTab() {
     html += '</div>';
   }
 
+  // ----- 2FA 验证限流 (超管/管理员均可配置) -----
+  const totpLimit = (settingsData.rateLimits && settingsData.rateLimits.totp) || { windowMs: 60000, max: 5 };
+  const totpWindowSec = Math.round(totpLimit.windowMs / 1000);
+  const isDefaultWindow = totpWindowSec === 60;
+  html += '<div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--border);">';
+  html += '<div class="sec-head" style="margin-bottom:6px;">2FA 验证限流</div>';
+  html += '<p style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">防止暴力破解, 限制 2FA 验证码的提交频率, 适用于所有用户</p>';
+  html += '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">';
+  html += '<span style="font-size:13px;color:var(--text);">每</span>';
+  html += `<input type="number" id="totpWindowSec" min="10" max="3600" step="10" value="${totpWindowSec}" style="width:78px;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--input-bg);color:var(--text);font-size:14px;text-align:center;">`;
+  html += '<span style="font-size:13px;color:var(--text);">秒最多尝试</span>';
+  html += `<input type="number" id="totpMaxAttempts" min="1" max="100" step="1" value="${totpLimit.max}" style="width:78px;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--input-bg);color:var(--text);font-size:14px;text-align:center;">`;
+  html += '<span style="font-size:13px;color:var(--text);">次</span>';
+  html += '<button class="btn btn-primary btn-sm" onclick="saveTotpRateLimit()">保存</button>';
+  html += '</div>';
+  html += `<div id="totpLimitHint" style="font-size:11px;color:var(--text-dim);margin-top:8px;">${isDefaultWindow ? '当前: 每 1 分钟最多 ' + totpLimit.max + ' 次' : '当前: 每 ' + totpWindowSec + ' 秒最多 ' + totpLimit.max + ' 次'}</div>`;
+  html += '</div>';
+
   content.innerHTML = html;
+}
+
+async function saveTotpRateLimit() {
+  const max = parseInt($('totpMaxAttempts').value, 10);
+  const windowSec = parseInt($('totpWindowSec').value, 10);
+  if (!Number.isFinite(max) || max < 1 || max > 100) {
+    toast('次数必须在 1-100 之间', 'error');
+    return;
+  }
+  if (!Number.isFinite(windowSec) || windowSec < 10 || windowSec > 3600) {
+    toast('时间窗口必须在 10-3600 秒之间', 'error');
+    return;
+  }
+  const result = await API.post('/api/admin/settings', { totpRateLimit: { max, windowMs: windowSec * 1000 } });
+  if (result && result.success) {
+    toast('已保存, 新的限流立即生效', 'success');
+    const rl = result.rateLimits && result.rateLimits.totp;
+    if (rl) {
+      const sec = Math.round(rl.windowMs / 1000);
+      $('totpLimitHint').textContent = '当前: 每 ' + sec + ' 秒最多 ' + rl.max + ' 次';
+    }
+  } else {
+    toast((result && result.error) || '保存失败', 'error');
+  }
 }
 
 // ==================== Admin: Users Tab ====================
@@ -1123,7 +1331,8 @@ function closeResetPassword() {
 async function doResetPassword() {
   hideError('resetPwError');
   const np = $('resetPwNew').value;
-  if (!np || np.length < 6) { showError('resetPwError', '新密码至少6位'); return; }
+  const npErr = clientCheckPasswordStrength(np);
+  if (npErr) { showError('resetPwError', npErr); return; }
   const result = await API.post('/api/admin/reset-password', { username: resetPwTarget, newPassword: np });
   if (result.error) { showError('resetPwError', result.error); return; }
   closeResetPassword();
@@ -1155,7 +1364,8 @@ async function doCreateUser() {
   msg.classList.remove('show');
   if (!username||!password) { msg.textContent='用户名和密码不能为空'; msg.classList.add('show'); return; }
   if (username.length<3) { msg.textContent='用户名至少3个字符'; msg.classList.add('show'); return; }
-  if (password.length<6) { msg.textContent='密码至少6个字符'; msg.classList.add('show'); return; }
+  const pwErr = clientCheckPasswordStrength(password);
+  if (pwErr) { msg.textContent = pwErr; msg.classList.add('show'); return; }
   const result = await API.post('/api/admin/create-user', { username, password });
   if (result.error) { msg.textContent=result.error; msg.classList.add('show'); }
   else { closeCreateUser(); toast(`用户 ${result.username} 创建成功`, 'success'); renderUsersTab(); }
@@ -1350,6 +1560,8 @@ async function doRegister() {
   const username=$('regUser').value.trim(), password=$('regPass').value, password2=$('regPass2').value;
   if (!username||!password) { showError('authError','都填上'); return; }
   if (password!==password2) { showError('authError','两次密码不一样'); return; }
+  const pwErr = clientCheckPasswordStrength(password);
+  if (pwErr) { showError('authError', pwErr); return; }
   const result = await API.post('/api/register', { username, password });
   if (result.error) { showError('authError',result.error); return; }
   if (result.success) { currentUser=result; showDashboard(); toast('搞定了','success'); }
@@ -1379,6 +1591,8 @@ async function doChangePassword() {
   hideError('pwError');
   const cp=$('pwCurrent').value, np=$('pwNew').value;
   if (!cp||!np) { showError('pwError','新旧密码都要填'); return; }
+  const pwErr = clientCheckPasswordStrength(np);
+  if (pwErr) { showError('pwError', pwErr); return; }
   const result = await API.post('/api/change-password', { currentPassword:cp, newPassword:np });
   if (result.error) { showError('pwError',result.error); return; }
   closeChangePassword(); toast('密码改了','success');
@@ -1464,9 +1678,20 @@ async function generateTOTPClient(secret, timeStep=30, digits=6) {
 
 async function refreshAllCodes() {
   for (const e of totpEntries) {
-    const id=e.id.replace(/[^a-zA-Z0-9_-]/g,'');
-    try { const code=await generateTOTPClient(e.secret); const el=document.getElementById('code_'+id); if(el)el.textContent=code; }
-    catch(err) { const el=document.getElementById('code_'+id); if(el)el.textContent='--'; }
+    const id=String(e.id).replace(/[^a-zA-Z0-9_-]/g,'');
+    const el=document.getElementById('code_'+id);
+    if (!el) continue;
+    // 条目可能尚未拉到 secret, 后端默认不再下发, 改为按需获取
+    let secret = totpSecretCache.get(e.id);
+    if (!secret) {
+      try { secret = await fetchTOTPSecret(e.id); } catch(_) { secret = null; }
+    }
+    if (secret) {
+      try { el.textContent = await generateTOTPClient(secret); }
+      catch(_) { el.textContent = '--'; }
+    } else {
+      el.textContent = '------';
+    }
   }
   updateAllBars();
 }
@@ -1544,7 +1769,7 @@ function cancel2FASetup() { renderSettingsTab(); }
 async function disable2FA() {
   const section=$('disable2FASection');
   if(!section.innerHTML){
-    section.innerHTML='<div style="margin-top:14px;"><p style="font-size:13px;color:var(--text-dim);margin-bottom:10px;">输入验证码以确认关闭</p><div class="totp-row" id="disableTOTPInputs">'+Array(6).fill('<input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="off">').join('')+'</div><div style="display:flex;gap:10px;"><button class="btn btn-danger" onclick="confirmDisable2FA()" style="flex:1;">确认关闭</button><button class="btn btn-secondary" onclick="cancelDisable2FA()" style="flex:1;">算了</button></div></div>';
+    section.innerHTML='<div style="margin-top:14px;"><p style="font-size:13px;color:var(--text-dim);margin-bottom:10px;">输入 2FA 验证码和当前登录密码以确认关闭</p><div class="totp-row" id="disableTOTPInputs">'+Array(6).fill('<input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="off">').join('')+'</div><input type="password" id="disable2FAPassword" placeholder="当前登录密码" style="margin-top:10px;width:100%;padding:10px;border:1.5px solid var(--border);border-radius:8px;background:var(--input-bg);color:var(--text);"><div style="display:flex;gap:10px;margin-top:10px;"><button class="btn btn-danger" onclick="confirmDisable2FA()" style="flex:1;">确认关闭</button><button class="btn btn-secondary" onclick="cancelDisable2FA()" style="flex:1;">算了</button></div></div>';
     const inputs=document.querySelectorAll('#disableTOTPInputs input');
     inputs.forEach((inp,i)=>{
       inp.addEventListener('input',e=>{const val=e.target.value.replace(/[^0-9]/g,'');e.target.value=val.slice(0,1);if(val&&i<5)inputs[i+1].focus()});
@@ -1557,7 +1782,9 @@ async function disable2FA() {
 async function confirmDisable2FA() {
   const inputs=document.querySelectorAll('#disableTOTPInputs input');let code='';inputs.forEach(i=>code+=i.value);
   if(code.length!==6){toast('6位验证码','error');return;}
-  const result=await API.post('/api/2fa/disable',{code});
+  const password=$('disable2FAPassword') ? $('disable2FAPassword').value : '';
+  if(!password){toast('请输入当前密码','error');return;}
+  const result=await API.post('/api/2fa/disable',{code,password});
   if(result.error){toast(result.error,'error');inputs.forEach(i=>i.value='');inputs[0].focus();return;}
   currentUser.twoFactorEnabled=false; if(totpTimer){clearInterval(totpTimer);totpTimer=null;}
   toast('2FA 已关闭','success'); renderSettingsTab();
@@ -1702,14 +1929,23 @@ function copyTOTPCode(elId) {
   });
 }
 
-function showTOTPDetail(id) {
+async function showTOTPDetail(id) {
   const entry=totpEntries.find(e=>e.id===id); if(!entry)return;
   const issuer=entry.issuer||'', name=entry.name;
+  // 后端默认不再下发 secret, 需要时单独拉取
+  let secret = totpSecretCache.get(id);
+  if (!secret) {
+    try { secret = await fetchTOTPSecret(id); } catch(_) { secret = null; }
+  }
   $('totpDetailTitle').textContent=issuer?`${issuer}: ${name}`:name;
-  $('totpDetailName').textContent=name;$('totpDetailSecret').textContent=entry.secret;$('totpDetailIssuer').textContent=issuer||'-';
+  $('totpDetailName').textContent=name;
+  $('totpDetailSecret').textContent = secret || '(无法获取密钥)';
+  $('totpDetailIssuer').textContent=issuer||'-';
   const qrDiv=$('totpDetailQr'); qrDiv.innerHTML='';
-  const uri=`otpauth://totp/${encodeURIComponent(issuer||name)}:${encodeURIComponent(name)}?secret=${entry.secret}&issuer=${encodeURIComponent(issuer||name)}`;
-  new QRCode(qrDiv,{text:uri,width:180,height:180,colorDark:'#1e293b',colorLight:'#ffffff'});
+  if (secret) {
+    const uri=`otpauth://totp/${encodeURIComponent(issuer||name)}:${encodeURIComponent(name)}?secret=${secret}&issuer=${encodeURIComponent(issuer||name)}`;
+    new QRCode(qrDiv,{text:uri,width:180,height:180,colorDark:'#1e293b',colorLight:'#ffffff'});
+  }
   const overlay=$('totpDetailModal'); overlay.classList.remove('hidden');
   overlay.addEventListener('click',function handler(e){if(e.target===overlay){closeTOTPDetail();overlay.removeEventListener('click',handler)}});
 }
