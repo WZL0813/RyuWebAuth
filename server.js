@@ -476,8 +476,8 @@ function setSecurityHeaders(res) {
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'no-referrer');
   res.setHeader('X-XSS-Protection', '0'); // 旧浏览器兼容, 现代 CSP 优先
-  // Permissions-Policy: 关闭用不到的特性
-  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=(), payment=()');
+  // Permissions-Policy: 仅开放需要的特性
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=(self), payment=()');
 }
 
 function setCspHeaders(res) {

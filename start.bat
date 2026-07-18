@@ -21,7 +21,7 @@ echo                /\___/
 echo                \/__/
 echo.
 echo		 Welcome to RyuWebAuth
-echo		 RyuWebAuth Version 1.0.2.2
+echo		 RyuWebAuth Version 1.0.2.3
 echo		 A beautiful Web authentication service
 echo		 with 2FA / TOTP support
 echo.

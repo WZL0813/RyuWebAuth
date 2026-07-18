@@ -1800,6 +1800,7 @@ async function startScanner() {
   $('scanStatus').textContent='请将二维码对准摄像头...';
   const cameras=[{facingMode:'environment'},{facingMode:'user'}];
   let started=false;
+  let lastErr = null;
   for(const cam of cameras){
     try{
       await html5QrScanner.start(cam,{fps:10,qrbox:{width:250,height:250}},async(decodedText)=>{
@@ -1811,13 +1812,25 @@ async function startScanner() {
       },(err)=>{ console.warn('Scan error:', err); });
       started=true;
       break;
-    }catch(e){}
+    }catch(e){ console.error('Camera start error:', e); lastErr = e; }
   }
   if(!started){
+    // 清理 Html5Qrcode 写入扫码区的原始错误信息
+    $('genScanArea').innerHTML = '';
     const isLocalhost=location.hostname==='localhost'||location.hostname==='127.0.0.1';
-    $('scanStatus').textContent=location.protocol==='http:'&&!isLocalhost
-      ?'摄像头需要 HTTPS 连接'
-      :'摄像头启动失败，请使用"上传图片"添加';
+    const errName = lastErr
+      ? (lastErr.name || '') + (lastErr.message || '') + (lastErr.toString ? lastErr.toString() : '')
+      : '';
+    if(errName.includes('NotAllowed') || errName.includes('Permission')){
+      const protocolHint = location.protocol==='http:'&&!isLocalhost
+        ? '非 HTTPS 环境下摄像头不可用；'
+        : '请在浏览器设置中允许本站使用摄像头权限；';
+      $('scanStatus').textContent=protocolHint + '请切换至"上传图片"添加';
+    }else if(location.protocol==='http:'&&!isLocalhost){
+      $('scanStatus').textContent='摄像头需要 HTTPS 连接，请使用"上传图片"添加';
+    }else{
+      $('scanStatus').textContent='摄像头启动失败，请使用"上传图片"添加';
+    }
     $('scanBtn').classList.remove('hidden');$('stopScanBtn').classList.add('hidden');
   }
 }
