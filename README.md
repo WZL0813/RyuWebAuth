@@ -4,7 +4,7 @@
 
 # RyuWebAuth
 
-![RyuWebAuth Logo](./public/logo.jpg)
+![RyuWebAuth Logo](./public/logo-512.png)
 
 Web 认证服务 —— 注册 / 登录 / 2FA 双因素验证 / 用户管理
 
